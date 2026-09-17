@@ -48,8 +48,24 @@ the newer version of each record wins and you won't lose recent work.
 
 It's one file with no build step and no dependencies.
 
-**GitHub Pages:** push this repo, then Settings → Pages → Source: `main` → Save.
+**GitHub Pages:** this repo ships a deploy workflow, so publishing is one setting:
+
+1. Push the repo to GitHub.
+2. **Settings → Pages → Source: GitHub Actions** (*not* "Deploy from a branch" —
+   the included workflow does the publishing).
+3. The first deploy runs automatically. Watch it under the **Actions** tab; the
+   live URL appears on the `deploy` job when it finishes.
+
+After that, every push to `main` redeploys within about a minute. You can also
+trigger one by hand from **Actions → Deploy to GitHub Pages → Run workflow**. A
+quick sanity check runs before each deploy, so a half-saved `index.html` fails
+the build instead of reaching your team.
+
 Your team opens `https://<user>.github.io/<repo>/` and each gets their own copy.
+
+> Pages on a **private** repo requires a paid GitHub plan. On the free tier the
+> repo must be public — the source becomes visible, but no one's data ever does,
+> since nothing is stored outside each person's own browser.
 
 **Anything else:** drag `index.html` onto [Netlify Drop](https://app.netlify.com/drop),
 or serve it from any web server. It also works opened directly from disk.

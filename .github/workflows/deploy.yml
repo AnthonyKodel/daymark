@@ -1,0 +1,74 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # lets you re-deploy by hand from the Actions tab
+  workflow_dispatch:
+
+# the token needs to be able to publish a Pages site
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# let a running deploy finish; queue at most one more behind it
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Catches a truncated or half-saved index.html before it reaches the team.
+      - name: Sanity-check the page
+        run: |
+          set -euo pipefail
+          test -s index.html || { echo "index.html is missing or empty"; exit 1; }
+
+          fail=0
+          need() {
+            if ! grep -qiF "$1" index.html; then
+              echo "::error::index.html is missing $1"
+              fail=1
+            fi
+          }
+          need "<!doctype html>"
+          need "</head>"
+          need "</body>"
+          need "</html>"
+
+          # an unbalanced script/style tag means the file was cut off mid-save
+          pair() {
+            open=$(grep -oiE "<$1[ >]" index.html | wc -l)
+            close=$(grep -oiE "</$1>" index.html | wc -l)
+            if [ "$open" -ne "$close" ]; then
+              echo "::error::$open <$1> tags but $close </$1> tags"
+              fail=1
+            fi
+          }
+          pair script
+          pair style
+
+          [ "$fail" -eq 0 ] || exit 1
+          echo "index.html looks intact ($(wc -c < index.html) bytes)"
+
+      - uses: actions/configure-pages@v5
+
+      - name: Package the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
