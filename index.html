@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daymark</title>
+<meta name="description" content="A daily productivity dashboard — focus timer, tasks, weekly routines, and habit streaks. Your data stays in your own browser.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛰️</text></svg>">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none!important}
+:root{
+  --ground:#F3F5F4; --surface:#FFFFFF; --surface2:#EDF1EF;
+  --ink:#17211D; --muted:#5C6B64; --faint:#8DA098;
+  --line:#DFE5E2; --line2:#CDD6D2;
+  --accent:#177357; --accent-soft:#E2EFEA; --accent-ink:#0F5A43;
+  --amber:#B4690E; --amber-soft:#F6EAD9;
+  --danger:#A63D2F; --danger-soft:#F6E2DE;
+  --shadow:0 1px 2px rgba(23,33,29,.05), 0 4px 16px rgba(23,33,29,.05);
+  --display:"Bricolage Grotesque", Georgia, serif;
+  --body:"Instrument Sans", system-ui, -apple-system, sans-serif;
+  --mono:"Spline Sans Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#101513; --surface:#181F1C; --surface2:#1E2723;
+    --ink:#E6ECE9; --muted:#93A69D; --faint:#65786F;
+    --line:#26302B; --line2:#33403A;
+    --accent:#3FBF95; --accent-soft:#1B322A; --accent-ink:#6ED9B4;
+    --amber:#E0A254; --amber-soft:#33271A;
+    --danger:#E07A6A; --danger-soft:#3A2320;
+    --shadow:0 1px 2px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.2);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101513; --surface:#181F1C; --surface2:#1E2723;
+  --ink:#E6ECE9; --muted:#93A69D; --faint:#65786F;
+  --line:#26302B; --line2:#33403A;
+  --accent:#3FBF95; --accent-soft:#1B322A; --accent-ink:#6ED9B4;
+  --amber:#E0A254; --amber-soft:#33271A;
+  --danger:#E07A6A;
+  --shadow:0 1px 2px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.2);
+}
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--body); font-size:15px; line-height:1.5;
+  margin:0; padding:0 20px 48px;
+}
+.wrap{max-width:1120px; margin:0 auto}
+button{font:inherit; color:inherit; cursor:pointer; background:none; border:none; padding:0}
+button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+input{font:inherit; color:inherit}
+
+/* ---------- header ---------- */
+header{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:16px; flex-wrap:wrap; padding:30px 4px 18px;
+}
+.masthead h1{
+  font-family:var(--display); font-weight:700; font-size:30px;
+  letter-spacing:-.02em; margin:0; line-height:1.1;
+}
+.masthead .date{color:var(--muted); margin-top:2px; font-size:14px}
+.sync{font-size:12px; color:var(--faint); display:flex; align-items:center; gap:6px}
+.sync .dot{width:7px; height:7px; border-radius:50%; background:var(--faint)}
+.sync.on .dot{background:var(--accent)}
+.sync.on{color:var(--muted)}
+.hdr-right{display:flex; flex-direction:column; align-items:flex-end; gap:7px}
+.backup{display:flex; gap:6px}
+.backup button{
+  font-size:11px; padding:4px 10px; border-radius:7px;
+  border:1px solid var(--line2); color:var(--muted); background:var(--surface);
+}
+.backup button:hover{border-color:var(--accent); color:var(--accent)}
+
+.statstrip{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:10px;
+  overflow:hidden; margin-bottom:20px;
+}
+.stat{background:var(--surface); padding:12px 16px}
+.stat .k{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+.stat .v{font-family:var(--mono); font-size:22px; font-weight:600; margin-top:2px; font-variant-numeric:tabular-nums}
+.stat .v small{font-size:13px; font-weight:400; color:var(--muted)}
+
+/* ---------- panels ---------- */
+.grid{display:grid; grid-template-columns:320px 1fr 300px; gap:20px; align-items:start}
+.panel{
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; box-shadow:var(--shadow); overflow:hidden;
+}
+.panel-h{
+  display:flex; align-items:baseline; justify-content:space-between;
+  padding:14px 18px 0;
+}
+.panel-h h2{
+  font-family:var(--display); font-weight:700; font-size:17px;
+  letter-spacing:-.01em; margin:0;
+}
+.panel-h .meta{font-family:var(--mono); font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+.panel-body{padding:14px 18px 18px}
+
+/* ---------- timer ---------- */
+.timer{text-align:center}
+.ring-wrap{position:relative; width:216px; margin:8px auto 4px}
+.ring-wrap svg{display:block; width:100%; height:auto}
+.ring-bg{stroke:var(--surface2); fill:none}
+.ring-fg{stroke:var(--amber); fill:none; stroke-linecap:round;
+  transition:stroke-dashoffset .3s linear}
+@media (prefers-reduced-motion: reduce){ .ring-fg{transition:none} }
+.timer.break .ring-fg{stroke:var(--accent)}
+.ring-label{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px;
+}
+.clock{font-family:var(--mono); font-size:44px; font-weight:500;
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em; line-height:1}
+.mode{font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--amber); font-weight:600}
+.timer.break .mode{color:var(--accent)}
+.durs{display:flex; justify-content:center; align-items:center; gap:6px; margin:10px 0 0}
+.durs.bdurs{margin:8px 0 14px}
+.durlab{font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); width:38px; text-align:right; margin-right:2px}
+.bdurs button[aria-pressed="true"]{
+  background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink);
+}
+.btn.warn{border-color:var(--amber); color:var(--amber); background:var(--amber-soft)}
+.int-pick{margin-top:12px}
+.int-pick .dphint{font-size:12px; color:var(--muted)}
+.int-chips{display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:8px}
+.int-chips button{
+  font-size:12px; padding:4px 11px; border-radius:999px;
+  border:1px solid var(--line2); color:var(--ink); background:var(--surface2);
+}
+.int-chips button:hover{border-color:var(--amber); color:var(--amber)}
+.int-chips button.skip{color:var(--faint); background:none; border-style:dashed}
+.int-line{font-size:12px; color:var(--muted); margin-top:8px}
+.int-line b{color:var(--amber); font-weight:600}
+.focuson{margin:14px 0 2px}
+.focuson select{
+  font:inherit; font-size:13px; width:100%; max-width:240px;
+  padding:6px 10px; border-radius:8px; border:1px solid var(--line2);
+  background:var(--ground); color:var(--ink);
+}
+.ontask{
+  margin-top:12px; padding-top:10px; border-top:1px solid var(--line);
+  font-size:12px; color:var(--muted); text-align:left;
+}
+.ontask .lab{
+  font-size:10px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--faint); display:block; margin-bottom:5px;
+}
+.ontask .row{display:flex; justify-content:space-between; gap:10px; padding:2px 0}
+.ontask .row .n{font-family:var(--mono); color:var(--amber); font-variant-numeric:tabular-nums; flex:none}
+.ontask .row .t{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.edit{color:var(--faint); font-size:13px; line-height:1; padding:4px; flex:none; visibility:hidden}
+.task:hover .edit, .habit:hover .edit, .edit:focus-visible{visibility:visible}
+.edit:hover{color:var(--accent)}
+.task .txt[contenteditable="true"], .habit-name[contenteditable="true"]{
+  background:var(--surface2); border-radius:6px; padding:2px 6px; margin:-2px 0;
+  outline:2px solid var(--accent); text-decoration:none; color:var(--ink);
+}
+.habit .days.editing button{opacity:.55}
+.habit .days.editing button[aria-pressed="true"]{opacity:1}
+.rep-edit{display:flex; gap:4px; margin:8px 0 2px 30px}
+.rep-edit button{
+  width:26px; height:24px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface2); color:var(--faint); font-family:var(--mono); font-size:11px;
+}
+.rep-edit button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+:root[data-theme="dark"] .rep-edit button[aria-pressed="true"]{color:#0B120F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .rep-edit button[aria-pressed="true"]{color:#0B120F} }
+.durs button{
+  font-family:var(--mono); font-size:13px; padding:4px 12px;
+  border:1px solid var(--line2); border-radius:999px; color:var(--muted);
+}
+.durs button[aria-pressed="true"]{
+  background:var(--amber-soft); border-color:var(--amber); color:var(--amber); font-weight:600;
+}
+.timer-ctl{display:flex; justify-content:center; gap:8px}
+.btn{
+  padding:8px 20px; border-radius:8px; font-weight:600; font-size:14px;
+  border:1px solid var(--line2); color:var(--muted); background:var(--surface);
+}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0B120F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn.primary{color:#0B120F} }
+.timer-note{font-size:12px; color:var(--faint); margin-top:12px}
+
+/* ---------- tasks ---------- */
+.addrow{display:flex; gap:8px; margin-bottom:12px}
+.addrow input{
+  flex:1; min-width:0; padding:8px 12px; border:1px solid var(--line2); border-radius:8px;
+  background:var(--ground);
+}
+.addrow button[type="submit"]{flex:none}
+.addrow input::placeholder{color:var(--faint)}
+.addrow button{
+  padding:8px 14px; border-radius:8px; background:var(--accent-soft);
+  color:var(--accent-ink); font-weight:600; border:1px solid transparent;
+}
+ul.tasks{list-style:none; margin:0; padding:0}
+.task{
+  display:flex; align-items:center; gap:10px; padding:9px 2px;
+  border-bottom:1px solid var(--line);
+}
+.task:last-child{border-bottom:none}
+.tickbox{
+  width:20px; height:20px; flex:none; border:1.5px solid var(--line2);
+  border-radius:6px; display:grid; place-items:center; color:transparent;
+}
+.task.done .tickbox{background:var(--accent); border-color:var(--accent); color:#fff}
+:root[data-theme="dark"] .task.done .tickbox{color:#0B120F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .task.done .tickbox{color:#0B120F} }
+.task .txt{flex:1; min-width:0; overflow-wrap:anywhere}
+.task.done .txt{color:var(--faint); text-decoration:line-through}
+.task .age{
+  font-family:var(--mono); font-size:10px; flex:none;
+  padding:2px 8px; border-radius:999px;
+  background:var(--surface2); color:var(--faint);
+  font-variant-numeric:tabular-nums;
+}
+.task .age.warn{background:var(--amber-soft); color:var(--amber); font-weight:600}
+.task .age.late{background:var(--danger-soft); color:var(--danger); font-weight:600}
+li.grouplab{
+  list-style:none; padding:12px 2px 4px; border-bottom:1px solid var(--line);
+  font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--muted); font-weight:600;
+  display:flex; justify-content:space-between; align-items:baseline;
+}
+li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
+.del{color:var(--faint); font-size:15px; line-height:1; padding:4px; flex:none; visibility:hidden}
+.task:hover .del, .habit:hover .del, .del:focus-visible{visibility:visible}
+.del:hover{color:var(--danger)}
+.donehead{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-top:12px; padding-top:10px; border-top:1px solid var(--line);
+}
+.donebar{
+  font-size:12px; color:var(--muted); background:none;
+  text-transform:uppercase; letter-spacing:.07em; font-weight:600;
+}
+.clearbar{font-size:12px; color:var(--faint)}
+.clearbar:hover{color:var(--danger)}
+.repbtn{
+  width:38px; flex:none; border-radius:8px; border:1px solid var(--line2);
+  color:var(--muted); font-size:17px; background:var(--surface);
+}
+.repbtn[aria-pressed="true"]{
+  background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink);
+}
+.daypick{
+  display:flex; align-items:center; gap:5px; margin:-4px 0 12px;
+}
+.daypick .dphint{font-size:12px; color:var(--faint); margin-right:4px}
+.daypick button{
+  width:30px; height:28px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface2); color:var(--faint);
+  font-family:var(--mono); font-size:12px;
+}
+.daypick button[aria-pressed="true"]{
+  background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;
+}
+:root[data-theme="dark"] .daypick button[aria-pressed="true"]{color:#0B120F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .daypick button[aria-pressed="true"]{color:#0B120F} }
+.task .rep{
+  font-family:var(--mono); font-size:10px; flex:none;
+  padding:2px 8px; border-radius:999px; letter-spacing:.05em;
+  background:var(--accent-soft); color:var(--accent-ink);
+}
+.task .focusmin{
+  font-family:var(--mono); font-size:10px; flex:none;
+  padding:2px 8px; border-radius:999px;
+  background:var(--amber-soft); color:var(--amber);
+  font-variant-numeric:tabular-nums;
+}
+.task .when{font-family:var(--mono); font-size:11px; color:var(--faint); flex:none}
+.empty{color:var(--faint); font-size:14px; padding:14px 2px}
+
+/* ---------- habits ---------- */
+.habit{padding:10px 2px; border-bottom:1px solid var(--line)}
+.habit:last-child{border-bottom:none}
+.habit-top{display:flex; align-items:center; gap:8px}
+.habit-name{flex:1; min-width:0; font-weight:500; overflow-wrap:anywhere}
+.streak{
+  font-family:var(--mono); font-size:12px; color:var(--amber);
+  background:var(--amber-soft); border-radius:999px; padding:2px 8px; flex:none;
+  font-variant-numeric:tabular-nums;
+}
+.streak.zero{color:var(--faint); background:var(--surface2)}
+.days{display:flex; gap:5px; margin-top:8px}
+.day{
+  flex:1; height:26px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface2); display:grid; place-items:center;
+  font-family:var(--mono); font-size:10px; color:var(--faint);
+}
+.day.on{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+:root[data-theme="dark"] .day.on{color:#0B120F}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .day.on{color:#0B120F} }
+.day.today{border-color:var(--accent)}
+
+/* ---------- chart ---------- */
+.chart-panel{margin-top:20px}
+.legend{display:flex; gap:16px; font-size:12px; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.sw{width:10px; height:10px; border-radius:3px; display:inline-block}
+.sw.f{background:var(--amber)} .sw.t{background:var(--accent)}
+.chart-scroll{overflow-x:auto}
+#chart{display:block; width:100%; min-width:520px; height:auto}
+.bar-f{fill:var(--amber)} .dot-t{fill:var(--accent)} .line-t{stroke:var(--accent)}
+.axis{fill:var(--muted); font-family:var(--mono); font-size:11px}
+.gridline{stroke:var(--line)}
+
+@media (max-width:980px){
+  .grid{grid-template-columns:1fr 1fr}
+  .grid .panel:first-child{grid-column:1 / -1}
+}
+@media (max-width:680px){
+  .grid{grid-template-columns:1fr}
+  .statstrip{grid-template-columns:1fr 1fr}
+  header{padding-top:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="masthead">
+      <h1>Daymark</h1>
+      <div class="date" id="today-label"></div>
+    </div>
+    <div class="hdr-right">
+      <div class="sync" id="sync"><span class="dot"></span><span id="sync-txt">loading…</span></div>
+      <div class="backup">
+        <button id="export-btn" type="button">Export backup</button>
+        <button id="import-btn" type="button">Restore</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </header>
+
+  <div class="statstrip">
+    <div class="stat"><div class="k">Focus today</div><div class="v" id="s-focus">0<small> min</small></div></div>
+    <div class="stat"><div class="k">Tasks done today</div><div class="v" id="s-tasks">0<small> / 0</small></div></div>
+    <div class="stat"><div class="k">Habits today</div><div class="v" id="s-habits">0<small> / 0</small></div></div>
+    <div class="stat"><div class="k">Best streak</div><div class="v" id="s-streak">0<small> days</small></div></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="panel-h"><h2>Focus</h2><span class="meta" id="focus-week">0 min this week</span></div>
+      <div class="panel-body timer" id="timer">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 216 216">
+            <circle class="ring-bg" cx="108" cy="108" r="98" stroke-width="10"/>
+            <circle class="ring-fg" id="ring" cx="108" cy="108" r="98" stroke-width="10"
+              transform="rotate(-90 108 108)"/>
+          </svg>
+          <div class="ring-label">
+            <span class="mode" id="mode-label">Focus</span>
+            <span class="clock" id="clock">25:00</span>
+          </div>
+        </div>
+        <div class="focuson">
+          <select id="focus-target" aria-label="Link this focus session to a task">
+            <option value="">Not linked to a task</option>
+          </select>
+        </div>
+        <div class="durs" id="durs" role="group" aria-label="Focus length">
+          <span class="durlab">Focus</span>
+          <button data-min="15" aria-pressed="false">15</button>
+          <button data-min="25" aria-pressed="true">25</button>
+          <button data-min="50" aria-pressed="false">50</button>
+        </div>
+        <div class="durs bdurs" id="bdurs" role="group" aria-label="Break length">
+          <span class="durlab">Break</span>
+          <button data-bmin="1" aria-pressed="false">1</button>
+          <button data-bmin="3" aria-pressed="false">3</button>
+          <button data-bmin="5" aria-pressed="true">5</button>
+          <button data-bmin="0" aria-pressed="false">none</button>
+        </div>
+        <div class="timer-ctl">
+          <button class="btn primary" id="startpause">Start</button>
+          <button class="btn warn" id="interrupt" hidden>Interrupted</button>
+          <button class="btn" id="reset">Reset</button>
+        </div>
+        <div class="int-pick" id="int-pick" hidden>
+          <span class="dphint">What pulled you away?</span>
+          <div class="int-chips">
+            <button data-reason="tech">Tech</button>
+            <button data-reason="other-channel">Another channel</button>
+            <button data-reason="my-channel">My channel</button>
+            <button data-reason="person">Person</button>
+            <button data-reason="other">Other</button>
+            <button data-reason="" class="skip">Don't log</button>
+          </div>
+        </div>
+        <div class="timer-note" id="timer-note">Finished sessions are logged automatically.</div>
+        <div class="int-line" id="int-line" hidden></div>
+        <div class="ontask" id="ontask" hidden></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Tasks</h2><span class="meta" id="task-meta"></span></div>
+      <div class="panel-body">
+        <form class="addrow" id="task-form">
+          <input id="task-input" placeholder="Add a task…" maxlength="300" autocomplete="off">
+          <button type="button" id="rep-toggle" class="repbtn" aria-pressed="false"
+            title="Repeat weekly on chosen days">↻</button>
+          <button type="submit">Add</button>
+        </form>
+        <div class="daypick" id="daypick" hidden>
+          <span class="dphint">Repeats every</span>
+          <button type="button" data-dow="0">S</button><button type="button" data-dow="1">M</button><button type="button" data-dow="2">T</button><button type="button" data-dow="3">W</button><button type="button" data-dow="4">T</button><button type="button" data-dow="5">F</button><button type="button" data-dow="6">S</button>
+        </div>
+        <ul class="tasks" id="task-list"></ul>
+        <div class="donehead" id="rout-head" hidden>
+          <button class="donebar" id="rout-toggle"></button>
+        </div>
+        <ul class="tasks" id="rout-list" hidden></ul>
+        <div class="donehead" id="done-head" hidden>
+          <button class="donebar" id="done-toggle"></button>
+          <button class="clearbar" id="done-clear">Clear</button>
+        </div>
+        <ul class="tasks" id="done-list" hidden></ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-h"><h2>Habits</h2><span class="meta" id="habit-meta"></span></div>
+      <div class="panel-body">
+        <form class="addrow" id="habit-form">
+          <input id="habit-input" placeholder="Add a habit…" maxlength="120" autocomplete="off">
+          <button type="submit">Add</button>
+        </form>
+        <div id="habit-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel chart-panel">
+    <div class="panel-h">
+      <h2>Last 7 days</h2>
+      <div class="legend"><span><i class="sw f"></i>Focus minutes</span><span><i class="sw t"></i>Tasks completed</span></div>
+    </div>
+    <div class="panel-body chart-scroll">
+      <svg id="chart" viewBox="0 0 720 200" role="img" aria-label="Focus minutes and tasks completed over the last 7 days"></svg>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------- state ---------- */
+const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{} };   // focus/interrupts keyed by "YYYY-MM-DD"
+
+const $ = id => document.getElementById(id);
+
+/* Inline text editing: click ✎ (or the text itself), Enter saves,
+   Escape cancels, clicking away saves. */
+let editingId = null;
+function makeEditable(el, current, commit, key){
+  el.contentEditable = "true";
+  el.spellcheck = true;
+  editingId = key;
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
+  let closed = false;
+  const finish = (save) => {
+    if(closed) return; closed = true;
+    editingId = null;
+    el.contentEditable = "false";
+    const next = el.textContent.trim();
+    if(save && next && next !== current) commit(next);
+    else if(save && !next){ el.textContent = current; renderAll(); }
+    else { el.textContent = current; renderAll(); }
+  };
+  el.addEventListener("keydown", e => {
+    if(e.key === "Enter"){ e.preventDefault(); finish(true); }
+    else if(e.key === "Escape"){ e.preventDefault(); finish(false); }
+  });
+  el.addEventListener("blur", () => finish(true));
+}
+const pad = n => String(n).padStart(2,"0");
+function dkey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function today(){ return dkey(new Date()); }
+function daysBack(n){ const d=new Date(); d.setDate(d.getDate()-n); return dkey(d); }
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+$("today-label").textContent = new Date().toLocaleDateString(undefined,
+  { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+
+/* ---------- persistence: artifact db with localStorage fallback ---------- */
+const LS_KEY = "daymark-v1";
+function lsLoad(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const d = JSON.parse(raw);
+      state.tasks=d.tasks||{}; state.habits=d.habits||{}; state.focus=d.focus||{};
+      state.routines=d.routines||{}; state.interrupts=d.interrupts||{}; }
+  }catch(e){}
+}
+function lsSave(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+function setSync(on, txt){
+  const el = $("sync");
+  el.classList.toggle("on", on);
+  $("sync-txt").textContent = txt;
+}
+
+/* Self-hosted build: all data lives in this browser's localStorage.
+   Every visitor gets their own private copy — no server, no accounts,
+   nothing leaves the device. Each change carries updatedAt, and deletes
+   are kept as tombstones, so an exported file merges predictably. */
+function touch(data){ data.updatedAt = Date.now(); return data; }
+function saveDoc(coll, id){ lsSave(); }
+function tombstone(coll, id){
+  state[coll][id] = touch({ deleted:true });
+  saveDoc(coll, id);
+}
+function hardRemove(coll, id){
+  delete state[coll][id];
+  lsSave();
+}
+
+function boot(){
+  lsLoad(); renderAll();
+  let ok = true;
+  try{
+    localStorage.setItem("daymark-probe","1");
+    localStorage.removeItem("daymark-probe");
+  }catch(e){ ok = false; }
+  setSync(ok, ok ? "saved in this browser"
+                : "storage blocked — changes won't survive a reload");
+}
+
+/* ---------- backup: export / import your data ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "daymark-backup-" + today() + ".json";
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+function importData(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const d = JSON.parse(reader.result);
+      if(!d || typeof d !== "object") throw new Error("not an object");
+      // newest record wins, so importing never loses newer local work
+      for(const coll of ["tasks","habits","focus","routines","interrupts"]){
+        for(const [id, rec] of Object.entries(d[coll] || {})){
+          const cur = state[coll][id];
+          if(!cur || (rec.updatedAt||0) >= (cur.updatedAt||0)) state[coll][id] = rec;
+        }
+      }
+      lsSave(); renderAll();
+      setSync(true, "backup restored");
+    }catch(e){
+      setSync(false, "that file isn't a Daymark backup");
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- tasks & weekly routines ---------- */
+let repMode = false;
+$("rep-toggle").addEventListener("click", () => {
+  repMode = !repMode;
+  $("rep-toggle").setAttribute("aria-pressed", String(repMode));
+  $("daypick").hidden = !repMode;
+  if(repMode && !document.querySelector('#daypick button[aria-pressed="true"]')){
+    // default to today's weekday
+    const b = document.querySelector('#daypick button[data-dow="'+new Date().getDay()+'"]');
+    if(b) b.setAttribute("aria-pressed","true");
+  }
+});
+$("daypick").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed")!=="true"));
+});
+function pickedDays(){
+  return [...document.querySelectorAll('#daypick button[aria-pressed="true"]')]
+    .map(b=>+b.dataset.dow).sort();
+}
+
+$("task-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const txt = $("task-input").value.trim();
+  if(!txt) return;
+  if(repMode){
+    const days = pickedDays();
+    if(!days.length){ $("daypick").hidden = false; return; }
+    const id = "r" + Date.now() + Math.random().toString(36).slice(2,6);
+    state.routines[id] = touch({ text:txt, days, createdAt:Date.now(), log:{} });
+    saveDoc("routines", id);
+  } else {
+    const id = "t" + Date.now() + Math.random().toString(36).slice(2,6);
+    state.tasks[id] = touch({ text:txt, done:false, createdAt:Date.now(), doneDay:null });
+    saveDoc("tasks", id);
+  }
+  $("task-input").value = "";
+  renderAll();
+});
+
+function toggleRoutine(id){
+  const prev = state.routines[id]; if(!prev) return;
+  const r = touch({ ...prev, log: { ...(prev.log||{}) } });
+  if(r.log[today()]) delete r.log[today()]; else r.log[today()] = true;
+  state.routines[id] = r;
+  saveDoc("routines", id); renderAll();
+}
+function deleteRoutine(id){
+  if(!confirm("Remove this weekly routine?")) return;
+  tombstone("routines", id); renderAll();
+}
+function routineEntries(){
+  return Object.entries(state.routines)
+    .filter(([,r])=>!r.deleted)
+    .sort((a,b)=>a[1].createdAt-b[1].createdAt);
+}
+function dueToday(r){ return (r.days||[]).includes(new Date().getDay()); }
+function dowTag(r){
+  return (r.days||[]).map(d=>DOW[d][0]).join("");
+}
+
+function routineRow(id, r, checked){
+  const li = document.createElement("li");
+  li.className = "task" + (checked ? " done" : "");
+  const tick = document.createElement("button");
+  tick.type="button"; tick.className="tickbox";
+  tick.setAttribute("aria-label", (checked?"Mark not done":"Mark done")+" — "+r.text);
+  tick.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 5 9.5 10 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  tick.onclick = () => toggleRoutine(id);
+  const txt = document.createElement("span"); txt.className="txt"; txt.textContent = r.text;
+  const tag = document.createElement("button"); tag.type="button"; tag.className="rep";
+  tag.textContent = "↻ " + dowTag(r);
+  tag.title = "Repeats: " + (r.days||[]).map(d=>DOW[d]).join(", ") + " — click to change";
+  tag.onclick = () => { editDays = (editDays===id ? null : id); renderAll(); };
+  const edit = document.createElement("button"); edit.type="button"; edit.className="edit"; edit.textContent="✎";
+  edit.setAttribute("aria-label","Edit routine text");
+  const startEdit = () => makeEditable(txt, r.text, next => {
+    state.routines[id] = touch({ ...state.routines[id], text: next });
+    saveDoc("routines", id); renderAll();
+  }, "r:"+id);
+  edit.onclick = startEdit;
+  txt.ondblclick = startEdit;
+  const del = document.createElement("button"); del.type="button"; del.className="del"; del.textContent="✕";
+  del.setAttribute("aria-label","Remove routine"); del.onclick = () => deleteRoutine(id);
+  li.append(tick, txt, tag, edit, del);
+  if(editingId === "r:"+id) queueMicrotask(startEdit);
+  return li;
+}
+
+// day-of-week editor shown under a routine when its ↻ tag is clicked
+let editDays = null;
+function dayEditorRow(id, r){
+  const li = document.createElement("li");
+  const wrap = document.createElement("div"); wrap.className = "rep-edit";
+  for(let d=0; d<7; d++){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = DOW[d][0];
+    b.title = DOW[d];
+    b.setAttribute("aria-pressed", String((r.days||[]).includes(d)));
+    b.setAttribute("aria-label", DOW[d]);
+    b.onclick = () => {
+      const days = new Set(r.days||[]);
+      if(days.has(d)) days.delete(d); else days.add(d);
+      if(!days.size) return;          // a routine needs at least one day
+      state.routines[id] = touch({ ...state.routines[id], days:[...days].sort() });
+      saveDoc("routines", id); renderAll();
+    };
+    wrap.append(b);
+  }
+  li.append(wrap);
+  return li;
+}
+
+function toggleTask(id){
+  const prev = state.tasks[id]; if(!prev) return;
+  const t = touch({ ...prev, done: !prev.done });
+  t.doneDay = t.done ? today() : null;
+  state.tasks[id] = t;
+  saveDoc("tasks", id); renderAll();
+}
+function deleteTask(id){ tombstone("tasks", id); renderAll(); }
+
+let showDone = false, showRoutines = false;
+$("done-toggle").addEventListener("click", () => { showDone = !showDone; renderAll(); });
+$("rout-toggle").addEventListener("click", () => { showRoutines = !showRoutines; renderAll(); });
+$("done-clear").addEventListener("click", () => {
+  const done = Object.entries(state.tasks).filter(([,t])=>!t.deleted && t.done);
+  if(!done.length) return;
+  if(!confirm("Remove all "+done.length+" completed task"+(done.length>1?"s":"")+"?")) return;
+  done.forEach(([id])=>tombstone("tasks", id));
+  renderAll();
+});
+
+// whole days between the calendar day of `ts` and today (creation at
+// 11pm still counts as 1 day old the next morning)
+function daysOld(ts){
+  const created = new Date(dkey(new Date(ts))+"T12:00:00");
+  const now = new Date(today()+"T12:00:00");
+  return Math.round((now-created)/86400000);
+}
+function ageTag(t){
+  const n = daysOld(t.createdAt);
+  return {
+    txt: n<=0 ? "today" : n+"d old",
+    cls: n>=7 ? " late" : n>=3 ? " warn" : ""
+  };
+}
+
+// total focused minutes ever logged against one task/routine key
+function focusMinutesFor(key){
+  let n = 0;
+  for(const day of Object.values(state.focus)){
+    const e = day && day.byTask && day.byTask[key];
+    if(e) n += e.minutes || 0;
+  }
+  return n;
+}
+
+function whenLabel(day){
+  if(!day) return "";
+  if(day===today()) return "today";
+  if(day===daysBack(1)) return "yesterday";
+  const d = new Date(day+"T12:00:00");
+  return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
+}
+
+function taskRow(id, t){
+  const li = document.createElement("li");
+  li.className = "task" + (t.done ? " done" : "");
+  const tick = document.createElement("button");
+  tick.type = "button"; tick.className = "tickbox";
+  tick.setAttribute("aria-label", t.done ? "Mark not done" : "Mark done");
+  tick.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 5 9.5 10 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  tick.onclick = () => toggleTask(id);
+  const txt = document.createElement("span"); txt.className="txt"; txt.textContent = t.text;
+  const side = document.createElement("span");
+  if(t.done){
+    side.className = "when";
+    // when it was finished, plus how long it sat open
+    const took = t.doneDay && t.createdAt ? Math.max(0,
+      Math.round((new Date(t.doneDay+"T12:00:00") - new Date(dkey(new Date(t.createdAt))+"T12:00:00"))/86400000)) : 0;
+    side.textContent = whenLabel(t.doneDay) + (took>0 ? " · took "+took+"d" : "");
+  } else {
+    const a = ageTag(t);
+    side.className = "age"+a.cls;
+    side.textContent = a.txt;
+  }
+  const mins = focusMinutesFor("t:"+id);
+  let fm = null;
+  if(mins){
+    fm = document.createElement("span");
+    fm.className = "focusmin";
+    fm.textContent = "◔ " + mins + "m";
+    fm.title = mins + " focused minutes logged against this task";
+  }
+  const edit = document.createElement("button"); edit.type="button"; edit.className="edit"; edit.textContent="✎";
+  edit.setAttribute("aria-label","Edit task text");
+  const startEdit = () => makeEditable(txt, t.text, next => {
+    state.tasks[id] = touch({ ...state.tasks[id], text: next });
+    saveDoc("tasks", id); renderAll();
+  }, "t:"+id);
+  edit.onclick = startEdit;
+  txt.ondblclick = startEdit;
+  const del = document.createElement("button"); del.type="button"; del.className="del"; del.textContent="✕";
+  del.setAttribute("aria-label","Delete task"); del.onclick = () => deleteTask(id);
+  li.append(tick, txt);
+  if(fm) li.append(fm);
+  li.append(side, edit, del);
+  if(editingId === "t:"+id) queueMicrotask(startEdit);
+  return li;
+}
+
+function renderTasks(){
+  // prune tasks finished (and tombstones) older than 30 days so the list stays light
+  const cutoff = daysBack(30);
+  const cutoffMs = Date.now() - 30*86400000;
+  for(const [id,t] of Object.entries(state.tasks)){
+    if(t.deleted && (t.updatedAt||0) < cutoffMs) hardRemove("tasks", id);
+    else if(!t.deleted && t.done && t.doneDay && t.doneDay < cutoff) hardRemove("tasks", id);
+  }
+
+  const entries = Object.entries(state.tasks)
+    .filter(([,t])=>!t.deleted)
+    .sort((a,b)=>a[1].createdAt-b[1].createdAt);
+  const open = entries.filter(([,t])=>!t.done);
+  const done = entries.filter(([,t])=>t.done)
+    .sort((a,b)=>(b[1].doneDay||"").localeCompare(a[1].doneDay||"") || b[1].createdAt-a[1].createdAt);
+  const routines = routineEntries();
+  const dueOpen = routines.filter(([,r])=>dueToday(r) && !(r.log||{})[today()]);
+  const dueDone = routines.filter(([,r])=>dueToday(r) && (r.log||{})[today()]);
+
+  const list = $("task-list"); list.innerHTML = "";
+  const group = (label, rows) => {
+    const li=document.createElement("li"); li.className="grouplab";
+    li.innerHTML = label+' <span class="n">'+rows.length+'</span>';
+    list.append(li);
+    rows.forEach(row=>list.append(row));
+  };
+  const carried = open.filter(([,t])=>daysOld(t.createdAt)>0);
+  const fresh = open.filter(([,t])=>daysOld(t.createdAt)<=0);
+  const useGroups = dueOpen.length || (carried.length && fresh.length);
+
+  if(dueOpen.length===0 && open.length===0){
+    const li=document.createElement("li"); li.className="empty";
+    li.textContent = (entries.length===0 && routines.length===0)
+      ? "Nothing here yet — add your first task above."
+      : "All clear. Nice.";
+    list.append(li);
+  } else if(useGroups){
+    if(dueOpen.length) group("Routine — due today", dueOpen.map(([id,r])=>routineRow(id,r,false)));
+    if(carried.length) group("Carried over", carried.map(([id,t])=>taskRow(id,t)));
+    if(fresh.length) group(carried.length?"Added today":"Tasks", fresh.map(([id,t])=>taskRow(id,t)));
+  } else open.forEach(([id,t])=>list.append(taskRow(id,t)));
+
+  // manager for every routine, due today or not
+  const rhead=$("rout-head"), rbar=$("rout-toggle"), rl=$("rout-list");
+  if(routines.length){
+    rhead.hidden=false;
+    rbar.textContent=(showRoutines?"▾":"▸")+" Weekly routines ("+routines.length+")";
+    rl.hidden=!showRoutines; rl.innerHTML="";
+    if(showRoutines) routines.forEach(([id,r])=>{
+      rl.append(routineRow(id,r,(r.log||{})[today()]));
+      if(editDays===id) rl.append(dayEditorRow(id,r));
+    });
+  } else { rhead.hidden=true; rl.hidden=true; }
+
+  const head=$("done-head"), bar=$("done-toggle"), dl=$("done-list");
+  if(done.length || dueDone.length){
+    head.hidden=false;
+    bar.textContent=(showDone?"▾":"▸")+" Completed ("+(done.length+dueDone.length)+")";
+    dl.hidden=!showDone; dl.innerHTML="";
+    if(showDone){
+      dueDone.forEach(([id,r])=>dl.append(routineRow(id,r,true)));
+      done.forEach(([id,t])=>dl.append(taskRow(id,t)));
+    }
+  } else { head.hidden=true; dl.hidden=true; }
+  const openCount = open.length + dueOpen.length;
+  $("task-meta").textContent = openCount
+    ? openCount+" open"+(carried.length ? " · "+carried.length+" carried" : "")
+    : "";
+}
+
+/* ---------- habits ---------- */
+$("habit-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("habit-input").value.trim();
+  if(!name) return;
+  const id = "h" + Date.now() + Math.random().toString(36).slice(2,6);
+  state.habits[id] = touch({ name, createdAt:Date.now(), log:{} });
+  $("habit-input").value = "";
+  saveDoc("habits", id);
+  renderAll();
+});
+
+function toggleHabit(id, day){
+  const prev = state.habits[id]; if(!prev) return;
+  const h = touch({ ...prev, log: { ...(prev.log||{}) } });
+  if(h.log[day]) delete h.log[day]; else h.log[day] = true;
+  state.habits[id] = h;
+  saveDoc("habits", id); renderAll();
+}
+function deleteHabit(id){
+  if(!confirm("Delete this habit and its history?")) return;
+  tombstone("habits", id); renderAll();
+}
+
+function streakOf(h){
+  const log = h.log || {}; let s = 0;
+  let start = log[today()] ? 0 : 1;      // today unticked doesn't break the streak yet
+  for(let i=start;;i++){
+    if(log[daysBack(i)]) s++; else break;
+  }
+  return s;
+}
+
+function renderHabits(){
+  const list = $("habit-list"); list.innerHTML = "";
+  const entries = Object.entries(state.habits)
+    .filter(([,h])=>!h.deleted)
+    .sort((a,b)=>a[1].createdAt-b[1].createdAt);
+  if(entries.length===0){
+    const d=document.createElement("div"); d.className="empty";
+    d.textContent="Track anything daily — reading, a walk, no-sugar.";
+    list.append(d); $("habit-meta").textContent=""; window._bestStreak=0; return;
+  }
+  let doneToday=0, best=0;
+  entries.forEach(([id,h])=>{
+    const log = h.log||{};
+    if(log[today()]) doneToday++;
+    const s = streakOf(h); best = Math.max(best, s);
+    const row=document.createElement("div"); row.className="habit";
+    const top=document.createElement("div"); top.className="habit-top";
+    const nm=document.createElement("span"); nm.className="habit-name"; nm.textContent=h.name;
+    const st=document.createElement("span"); st.className="streak"+(s?"":" zero");
+    st.textContent = s ? "⏶ "+s+"d" : "—";
+    st.title = s+"-day streak";
+    const ed=document.createElement("button"); ed.type="button"; ed.className="edit"; ed.textContent="✎";
+    ed.setAttribute("aria-label","Edit habit name");
+    const startEdit = () => makeEditable(nm, h.name, next => {
+      state.habits[id] = touch({ ...state.habits[id], name: next });
+      saveDoc("habits", id); renderAll();
+    }, "h:"+id);
+    ed.onclick = startEdit;
+    nm.ondblclick = startEdit;
+    const del=document.createElement("button"); del.type="button"; del.className="del"; del.textContent="✕";
+    del.setAttribute("aria-label","Delete habit"); del.onclick=()=>deleteHabit(id);
+    top.append(nm, st, ed, del);
+    if(editingId === "h:"+id) queueMicrotask(startEdit);
+    const days=document.createElement("div"); days.className="days";
+    for(let i=6;i>=0;i--){
+      const day=daysBack(i);
+      const b=document.createElement("button");
+      b.className="day"+(log[day]?" on":"")+(i===0?" today":"");
+      b.textContent = DOW[new Date(day+"T12:00:00").getDay()][0];
+      b.title = day; b.setAttribute("aria-pressed", !!log[day]);
+      b.setAttribute("aria-label", h.name+" on "+day);
+      b.onclick=()=>toggleHabit(id, day);
+      days.append(b);
+    }
+    row.append(top, days); list.append(row);
+  });
+  $("habit-meta").textContent = doneToday+" / "+entries.length+" today";
+  window._bestStreak = best;
+}
+
+/* ---------- focus timer ---------- */
+const RING_C = 2*Math.PI*98;
+$("ring").style.strokeDasharray = RING_C;
+let tmr = { mode:"focus", durMin:25, breakMin:5, running:false, endsAt:0, remainMs:25*60000 };
+try{
+  const saved = JSON.parse(localStorage.getItem("daymark-timer")||"null");
+  if(saved){
+    tmr = saved;
+    if(typeof tmr.breakMin !== "number") tmr.breakMin = 5;
+    if(tmr.running && tmr.endsAt <= Date.now()){ tmr.running=false; tmr.remainMs=0; }
+  }
+}catch(e){}
+function tmrSave(){ try{ localStorage.setItem("daymark-timer", JSON.stringify(tmr)); }catch(e){} }
+
+function remain(){ return tmr.running ? Math.max(0, tmr.endsAt-Date.now()) : tmr.remainMs; }
+function totalMs(){ return (tmr.mode==="focus" ? tmr.durMin : Math.max(1,tmr.breakMin))*60000; }
+
+function drawTimer(){
+  const r = remain(), total = totalMs();
+  const m = Math.floor(r/60000), s = Math.floor(r%60000/1000);
+  $("clock").textContent = pad(m)+":"+pad(s);
+  $("ring").style.strokeDashoffset = RING_C*(1 - r/total);
+  $("mode-label").textContent = tmr.mode==="focus" ? "Focus" : "Break";
+  $("timer").classList.toggle("break", tmr.mode!=="focus");
+  $("startpause").textContent = tmr.running ? "Pause" : (r<total ? "Resume" : "Start");
+  document.title = tmr.running ? pad(m)+":"+pad(s)+" · Daymark" : "Daymark";
+  document.querySelectorAll("#durs button").forEach(b=>
+    b.setAttribute("aria-pressed", String(+b.dataset.min===tmr.durMin)));
+  document.querySelectorAll("#bdurs button").forEach(b=>
+    b.setAttribute("aria-pressed", String(+b.dataset.bmin===tmr.breakMin)));
+  $("interrupt").hidden = !(tmr.running && tmr.mode==="focus");
+  if(tmr.running) $("int-pick").hidden = true;
+}
+
+let tick = null;
+function startTick(){
+  clearInterval(tick);
+  tick = setInterval(()=>{
+    if(!tmr.running) return;
+    if(remain()<=0) finishSession(); else drawTimer();
+  }, 500);
+}
+
+function logFocus(minutes){
+  if(minutes < 1) return;
+  const day = today();
+  const cur = state.focus[day] || { minutes:0, sessions:0 };
+  const byTask = { ...(cur.byTask||{}) };
+  const target = $("focus-target").value;
+  if(target){
+    const label = targetLabel(target);
+    const prev = byTask[target] || { minutes:0, label };
+    byTask[target] = { minutes: prev.minutes + minutes, label };
+  }
+  state.focus[day] = touch({
+    minutes: cur.minutes+minutes, sessions: (cur.sessions||0)+1, byTask
+  });
+  saveDoc("focus", day);
+}
+
+/* which task the timer is pointed at */
+function targetLabel(key){
+  const [kind, id] = key.split(":");
+  const rec = kind==="r" ? state.routines[id] : state.tasks[id];
+  return rec && !rec.deleted ? rec.text : "(removed)";
+}
+function renderFocusTarget(){
+  const sel = $("focus-target");
+  const keep = sel.value;
+  const open = Object.entries(state.tasks)
+    .filter(([,t])=>!t.deleted && !t.done)
+    .sort((a,b)=>a[1].createdAt-b[1].createdAt)
+    .map(([id,t])=>["t:"+id, t.text]);
+  const routines = routineEntries()
+    .filter(([,r])=>dueToday(r))
+    .map(([id,r])=>["r:"+id, "↻ "+r.text]);
+  const opts = [...routines, ...open];
+  sel.innerHTML = "";
+  const none = document.createElement("option");
+  none.value = ""; none.textContent = opts.length ? "Not linked to a task" : "No open tasks to link";
+  sel.append(none);
+  opts.forEach(([v, label])=>{
+    const o = document.createElement("option");
+    o.value = v; o.textContent = label.length>42 ? label.slice(0,41)+"…" : label;
+    sel.append(o);
+  });
+  // keep the selection through re-renders; fall back to none if it's gone
+  sel.value = opts.some(([v])=>v===keep) ? keep : "";
+}
+
+function renderOnTask(){
+  const el = $("ontask");
+  const f = state.focus[today()];
+  const entries = Object.entries((f && f.byTask) || {})
+    .sort((a,b)=>b[1].minutes-a[1].minutes);
+  if(!entries.length){ el.hidden = true; return; }
+  el.hidden = false;
+  const esc = s => s.replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+  el.innerHTML = '<span class="lab">Focused on today</span>' +
+    entries.map(([key,v])=>{
+      // prefer the task's current wording; fall back to what was stored
+      const [kind, id] = key.split(":");
+      const rec = kind==="r" ? state.routines[id] : state.tasks[id];
+      const name = (rec && !rec.deleted) ? rec.text : v.label;
+      return '<div class="row"><span class="t">'+esc(name)+'</span><span class="n">'+v.minutes+'m</span></div>';
+    }).join("");
+}
+
+function beep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 660; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime+.6);
+    o.start(); o.stop(ctx.currentTime+.6);
+  }catch(e){}
+}
+
+function finishSession(){
+  const wasFocus = tmr.mode==="focus";
+  if(wasFocus) logFocus(tmr.durMin);
+  beep();
+  tmr.mode = (wasFocus && tmr.breakMin>0) ? "break" : "focus";
+  tmr.running = false;
+  tmr.remainMs = totalMs();
+  tmrSave(); drawTimer(); renderAll();
+  $("timer-note").textContent = wasFocus
+    ? (tmr.breakMin>0
+        ? tmr.durMin+" min logged. Take "+tmr.breakMin+" — the break timer is ready."
+        : tmr.durMin+" min logged. No break — ready for the next round.")
+    : "Break over. Ready for another round?";
+}
+
+$("startpause").addEventListener("click", ()=>{
+  if(tmr.running){ tmr.remainMs = remain(); tmr.running = false; }
+  else { tmr.endsAt = Date.now() + (remain()>0 ? remain() : totalMs()); tmr.running = true; }
+  tmrSave(); drawTimer();
+});
+$("reset").addEventListener("click", ()=>{
+  if(tmr.mode==="focus"){
+    const spent = Math.floor((totalMs()-remain())/60000);
+    if(spent>=1 && confirm("Log the "+spent+" focused minute"+(spent>1?"s":"")+" before resetting?"))
+      { logFocus(spent); renderAll(); }
+  }
+  tmr.mode="focus"; tmr.running=false; tmr.remainMs=totalMs();
+  tmrSave(); drawTimer();
+  $("timer-note").textContent="Finished sessions are logged automatically.";
+});
+$("durs").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b || !b.dataset.min) return;
+  tmr.durMin = +b.dataset.min;
+  if(!tmr.running && tmr.mode==="focus") tmr.remainMs = totalMs();
+  tmrSave(); drawTimer();
+});
+$("bdurs").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b || b.dataset.bmin===undefined) return;
+  tmr.breakMin = +b.dataset.bmin;
+  if(tmr.mode==="break" && !tmr.running){
+    if(tmr.breakMin===0) tmr.mode="focus";
+    tmr.remainMs = totalMs();
+  }
+  tmrSave(); drawTimer();
+});
+
+/* interruptions */
+const INT_LABELS = { "tech":"tech", "other-channel":"another channel",
+  "my-channel":"my channel", "person":"person", "other":"other" };
+
+$("interrupt").addEventListener("click", ()=>{
+  if(!(tmr.running && tmr.mode==="focus")) return;
+  tmr.remainMs = remain(); tmr.running = false;
+  tmrSave(); drawTimer();
+  $("int-pick").hidden = false;
+  $("timer-note").textContent = "Timer paused — log what pulled you away, then Resume when you're back.";
+});
+$("int-pick").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  const reason = b.dataset.reason;
+  $("int-pick").hidden = true;
+  if(reason){
+    const day = today();
+    const cur = state.interrupts[day] || { total:0, reasons:{} };
+    const reasons = { ...(cur.reasons||{}) };
+    reasons[reason] = (reasons[reason]||0) + 1;
+    state.interrupts[day] = touch({ total:(cur.total||0)+1, reasons });
+    saveDoc("interrupts", day);
+    $("timer-note").textContent = "Logged: "+INT_LABELS[reason]+". Resume when you're back.";
+    renderAll();
+  } else {
+    $("timer-note").textContent = "Not logged. Resume when you're back.";
+  }
+});
+
+function renderInterrupts(){
+  const d = state.interrupts[today()];
+  const el = $("int-line");
+  if(!d || !d.total){ el.hidden = true; return; }
+  const parts = Object.entries(d.reasons||{})
+    .sort((a,b)=>b[1]-a[1])
+    .map(([k,n])=>INT_LABELS[k]+" ×"+n);
+  el.hidden = false;
+  el.innerHTML = "<b>"+d.total+"</b> interruption"+(d.total>1?"s":"")+" today — "+parts.join(" · ");
+}
+startTick(); drawTimer();
+
+/* ---------- stats + chart ---------- */
+function renderStats(){
+  const f = state.focus[today()] || {minutes:0};
+  $("s-focus").innerHTML = f.minutes + "<small> min</small>";
+  const all = Object.values(state.tasks).filter(t=>!t.deleted);
+  const rs = Object.values(state.routines).filter(r=>!r.deleted);
+  const rDue = rs.filter(r=>dueToday(r)).length;
+  const rDone = rs.filter(r=>dueToday(r) && (r.log||{})[today()]).length;
+  const doneToday = all.filter(t=>t.done && t.doneDay===today()).length + rDone;
+  const openNow = all.filter(t=>!t.done).length + (rDue - rDone);
+  $("s-tasks").innerHTML = doneToday + "<small> / " + (doneToday+openNow) + "</small>";
+  const habits = Object.values(state.habits).filter(h=>!h.deleted);
+  const hToday = habits.filter(h=>(h.log||{})[today()]).length;
+  $("s-habits").innerHTML = hToday + "<small> / " + habits.length + "</small>";
+  $("s-streak").innerHTML = (window._bestStreak||0) + "<small> days</small>";
+  let week=0; for(let i=0;i<7;i++) week += (state.focus[daysBack(i)]||{minutes:0}).minutes;
+  $("focus-week").textContent = week+" min this week";
+}
+
+function renderChart(){
+  const days=[]; for(let i=6;i>=0;i--) days.push(daysBack(i));
+  const focus = days.map(d=>(state.focus[d]||{minutes:0}).minutes);
+  const tasks = days.map(d=>
+    Object.values(state.tasks).filter(t=>!t.deleted&&t.done&&t.doneDay===d).length +
+    Object.values(state.routines).filter(r=>!r.deleted&&(r.log||{})[d]).length);
+  const W=720,H=200,L=44,R=36,T=16,B=28;
+  const iw=W-L-R, ih=H-T-B;
+  const fmax=Math.max(30, Math.ceil(Math.max(...focus)/30)*30);
+  const tmax=Math.max(4, Math.max(...tasks));
+  const x=i=>L+iw*(i+.5)/7;
+  const yf=v=>T+ih*(1-v/fmax);
+  const yt=v=>T+ih*(1-v/tmax);
+  let s="";
+  for(let g=0;g<=3;g++){
+    const v=fmax*g/3, y=yf(v);
+    s+='<line class="gridline" x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'"/>';
+    s+='<text class="axis" x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end">'+Math.round(v)+'</text>';
+  }
+  const bw=Math.min(40, iw/7*.5);
+  days.forEach((d,i)=>{
+    if(focus[i]>0){
+      const y=yf(focus[i]);
+      s+='<rect class="bar-f" x="'+(x(i)-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+(T+ih-y)+'" rx="4"/>';
+    }
+    const lbl=DOW[new Date(d+"T12:00:00").getDay()];
+    s+='<text class="axis" x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+lbl+'</text>';
+  });
+  let path="";
+  days.forEach((d,i)=>{ path+=(i?"L":"M")+x(i)+" "+yt(tasks[i])+" "; });
+  s+='<path class="line-t" d="'+path+'" fill="none" stroke-width="2" stroke-linecap="round"/>';
+  days.forEach((d,i)=>{
+    s+='<circle class="dot-t" cx="'+x(i)+'" cy="'+yt(tasks[i])+'" r="3.5"/>';
+    if(tasks[i]>0) s+='<text class="axis" x="'+x(i)+'" y="'+(yt(tasks[i])-8)+'" text-anchor="middle">'+tasks[i]+'</text>';
+  });
+  s+='<text class="axis" x="'+(W-R+6)+'" y="'+(yt(tmax)+4)+'">'+tmax+'</text>';
+  $("chart").innerHTML=s;
+}
+
+function renderAll(){
+  renderTasks(); renderHabits(); renderStats(); renderChart();
+  renderInterrupts(); renderFocusTarget(); renderOnTask();
+  lsSave();
+}
+
+$("export-btn").addEventListener("click", exportData);
+$("import-btn").addEventListener("click", ()=>$("import-file").click());
+$("import-file").addEventListener("change", e=>{
+  const f = e.target.files && e.target.files[0];
+  if(f) importData(f);
+  e.target.value = "";
+});
+
+renderAll();
+boot();
+// re-render shortly after midnight so "today" rolls over
+setInterval(()=>{ const t=$("today-label").dataset.d; if(t!==today()){ $("today-label").dataset.d=today(); renderAll(); } }, 60000);
+$("today-label").dataset.d = today();
+</script>
+</body>
+</html>
