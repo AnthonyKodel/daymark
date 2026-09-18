@@ -69,6 +69,37 @@ header{
 .sync .dot{width:7px; height:7px; border-radius:50%; background:var(--faint)}
 .sync.on .dot{background:var(--accent)}
 .sync.on{color:var(--muted)}
+/* ---------- sign-in gate ---------- */
+.gate{
+  min-height:100vh; display:grid; place-items:center;
+  padding:24px; background:var(--ground);
+}
+.gate-card{
+  width:100%; max-width:360px; background:var(--surface);
+  border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow);
+  padding:28px 26px; display:flex; flex-direction:column;
+}
+.gate-card h1{
+  font-family:var(--display); font-weight:700; font-size:26px;
+  letter-spacing:-.02em; margin:0;
+}
+.gate-sub{color:var(--muted); font-size:13px; margin:6px 0 20px; line-height:1.5}
+.gate-lab{
+  font-size:10px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--faint); margin-bottom:5px;
+}
+.gate-card input{
+  padding:9px 12px; border:1px solid var(--line2); border-radius:8px;
+  background:var(--ground); color:var(--ink); margin-bottom:14px; width:100%;
+}
+.gate-go{width:100%; margin-top:2px}
+.gate-msg{
+  font-size:12px; margin:12px 0 0; padding:9px 11px; border-radius:8px;
+  background:var(--amber-soft); color:var(--amber); line-height:1.45;
+}
+.gate-msg.ok{background:var(--accent-soft); color:var(--accent-ink)}
+.gate-alt{font-size:12px; color:var(--faint); margin:16px 0 0; text-align:center}
+.gate-alt button{color:var(--accent); font-size:12px; font-weight:600; text-decoration:underline}
 .hdr-right{display:flex; flex-direction:column; align-items:flex-end; gap:7px}
 .backup{display:flex; gap:6px}
 .backup button{
@@ -326,7 +357,27 @@ li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gate-form">
+    <h1>Daymark</h1>
+    <p class="gate-sub">Sign in and your tasks, streaks and focus history
+      follow you to every device.</p>
+    <label class="gate-lab" for="gate-email">Email</label>
+    <input id="gate-email" type="email" autocomplete="email" required>
+    <label class="gate-lab" for="gate-pass">Password</label>
+    <input id="gate-pass" type="password" autocomplete="current-password"
+           minlength="8" required>
+    <button class="btn primary gate-go" id="gate-go" type="submit">Sign in</button>
+    <p class="gate-msg" id="gate-msg" hidden></p>
+    <p class="gate-alt">
+      <span id="gate-alt-text">New here?</span>
+      <button type="button" id="gate-toggle">Create an account</button>
+    </p>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
   <header>
     <div class="masthead">
       <h1>Daymark</h1>
@@ -337,6 +388,7 @@ li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
       <div class="backup">
         <button id="export-btn" type="button">Export backup</button>
         <button id="import-btn" type="button">Restore</button>
+        <button id="signout-btn" type="button" hidden>Sign out</button>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
       </div>
     </div>
@@ -453,8 +505,27 @@ li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
   </section>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 "use strict";
+
+/* ============================================================
+   CLOUD SYNC SETUP  —  fill these in to turn on saved accounts.
+   Leave them as-is and the app runs exactly as before, storing
+   everything in this browser only.
+
+   Both values are safe to publish: the anon key only grants what
+   your row-level-security rules allow, which is "your own row".
+   See supabase-setup.sql in this repo for the two-minute setup.
+   ============================================================ */
+const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE";
+
+// Without cloud sync there's nothing to sign in to, so show the app at once.
+// With it, both screens stay hidden for the moment it takes to check the session.
+if(/^PASTE_/.test(SUPABASE_URL) || /^PASTE_/.test(SUPABASE_ANON_KEY)){
+  document.getElementById("app").hidden = false;
+}
 /* ---------- state ---------- */
 const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{} };   // focus/interrupts keyed by "YYYY-MM-DD"
 
@@ -522,25 +593,152 @@ function setSync(on, txt){
    nothing leaves the device. Each change carries updatedAt, and deletes
    are kept as tombstones, so an exported file merges predictably. */
 function touch(data){ data.updatedAt = Date.now(); return data; }
-function saveDoc(coll, id){ lsSave(); }
+function saveDoc(coll, id){ lsSave(); schedulePush(); }
 function tombstone(coll, id){
   state[coll][id] = touch({ deleted:true });
   saveDoc(coll, id);
 }
 function hardRemove(coll, id){
   delete state[coll][id];
-  lsSave();
+  lsSave(); schedulePush();
 }
 
-function boot(){
+/* ---------- cloud sync (optional; off until configured) ---------- */
+const COLLS = ["tasks","habits","focus","routines","interrupts"];
+const cloudConfigured = !/^PASTE_/.test(SUPABASE_URL) && !/^PASTE_/.test(SUPABASE_ANON_KEY);
+let sb = null, me = null, pushTimer = null, lastPushed = "";
+
+// Merge one state object into ours, newest record winning. Used for both
+// the cloud copy and imported backups, so a stale device never erases work.
+function mergeInto(incoming){
+  let changed = false;
+  for(const coll of COLLS){
+    for(const [id, rec] of Object.entries((incoming && incoming[coll]) || {})){
+      const cur = state[coll][id];
+      if(!cur || (rec.updatedAt||0) > (cur.updatedAt||0)){
+        state[coll][id] = rec; changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+/* Guard against one person's leftover data being pulled into another
+   person's account on a shared browser. A device that has never had an
+   account signed in keeps whatever is stored, so local-only work migrates
+   into the first account that signs in here. */
+const UID_KEY = "daymark-uid";
+function prepareDeviceFor(uid){
+  let prev = null;
+  try{ prev = localStorage.getItem(UID_KEY); }catch(e){}
+  if(prev && prev !== uid){
+    for(const c of COLLS) state[c] = {};
+    lastPushed = "";
+    lsSave();
+  }
+  try{ localStorage.setItem(UID_KEY, uid); }catch(e){}
+}
+
+function schedulePush(){
+  if(!sb || !me) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushCloud, 1200);   // batch rapid edits into one write
+}
+
+async function pushCloud(){
+  if(!sb || !me) return;
+  const payload = JSON.stringify(state);
+  if(payload === lastPushed) return;         // nothing actually changed
+  try{
+    const { error } = await sb.from("daymark_state").upsert({
+      user_id: me.id, data: JSON.parse(payload), updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+    if(error) throw error;
+    lastPushed = payload;
+    setSync(true, "synced to your account");
+  }catch(e){
+    setSync(false, "offline — saved on this device, will retry");
+  }
+}
+
+async function pullCloud(){
+  if(!sb || !me) return;
+  try{
+    const { data, error } = await sb.from("daymark_state")
+      .select("data").eq("user_id", me.id).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      if(mergeInto(data.data)){ lsSave(); renderAll(); }
+    }
+    setSync(true, "synced to your account");
+    // push straight back so the cloud gets anything only this device had
+    lastPushed = ""; await pushCloud();
+  }catch(e){
+    setSync(false, "offline — saved on this device, will retry");
+  }
+}
+
+function showApp(signedIn){
+  $("gate").hidden = signedIn;
+  $("app").hidden = !signedIn;
+  // only meaningful when there's an actual account behind the session
+  $("signout-btn").hidden = !(signedIn && me);
+}
+
+function gateMsg(text, ok){
+  const el = $("gate-msg");
+  if(!text){ el.hidden = true; return; }
+  el.hidden = false; el.textContent = text;
+  el.classList.toggle("ok", !!ok);
+}
+
+async function boot(){
   lsLoad(); renderAll();
+
   let ok = true;
   try{
     localStorage.setItem("daymark-probe","1");
     localStorage.removeItem("daymark-probe");
   }catch(e){ ok = false; }
-  setSync(ok, ok ? "saved in this browser"
-                : "storage blocked — changes won't survive a reload");
+
+  if(!cloudConfigured){
+    showApp(true);                      // local-only mode: no sign-in needed
+    setSync(ok, ok ? "saved in this browser"
+                   : "storage blocked — changes won't survive a reload");
+    return;
+  }
+
+  if(!window.supabase){
+    showApp(true);
+    setSync(false, "sync library blocked — saved on this device");
+    return;
+  }
+
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data:{ session } } = await sb.auth.getSession();
+  me = session ? session.user : null;
+  showApp(!!me);
+  if(me){
+    setSync(false, "syncing…");
+    prepareDeviceFor(me.id);
+    await pullCloud();
+  }
+
+  sb.auth.onAuthStateChange((_evt, s) => {
+    const was = me && me.id;
+    me = s ? s.user : null;
+    showApp(!!me);
+    if(me && me.id !== was){
+      setSync(false, "syncing…");
+      prepareDeviceFor(me.id);
+      renderAll();
+      pullCloud();
+    }
+  });
+
+  // catch up when the tab comes back or the network returns
+  window.addEventListener("focus", ()=>{ if(me) pullCloud(); });
+  window.addEventListener("online", ()=>{ if(me){ lastPushed=""; pushCloud(); } });
 }
 
 /* ---------- backup: export / import your data ---------- */
@@ -558,14 +756,8 @@ function importData(file){
     try{
       const d = JSON.parse(reader.result);
       if(!d || typeof d !== "object") throw new Error("not an object");
-      // newest record wins, so importing never loses newer local work
-      for(const coll of ["tasks","habits","focus","routines","interrupts"]){
-        for(const [id, rec] of Object.entries(d[coll] || {})){
-          const cur = state[coll][id];
-          if(!cur || (rec.updatedAt||0) >= (cur.updatedAt||0)) state[coll][id] = rec;
-        }
-      }
-      lsSave(); renderAll();
+      mergeInto(d);              // newest record wins; never loses newer work
+      lsSave(); renderAll(); schedulePush();
       setSync(true, "backup restored");
     }catch(e){
       setSync(false, "that file isn't a Daymark backup");
@@ -1208,6 +1400,61 @@ function renderAll(){
   renderInterrupts(); renderFocusTarget(); renderOnTask();
   lsSave();
 }
+
+/* ---------- sign-in form ---------- */
+let gateMode = "in";     // "in" = sign in, "up" = create account
+function setGateMode(mode){
+  gateMode = mode;
+  const signIn = mode === "in";
+  $("gate-go").textContent = signIn ? "Sign in" : "Create account";
+  $("gate-alt-text").textContent = signIn ? "New here?" : "Already have an account?";
+  $("gate-toggle").textContent = signIn ? "Create an account" : "Sign in instead";
+  $("gate-pass").autocomplete = signIn ? "current-password" : "new-password";
+}
+$("gate-toggle").addEventListener("click", ()=>{
+  setGateMode(gateMode === "in" ? "up" : "in");
+  gateMsg("");
+});
+
+$("gate-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if(!sb) return;
+  const email = $("gate-email").value.trim();
+  const password = $("gate-pass").value;
+  const btn = $("gate-go");
+  btn.disabled = true;
+  btn.textContent = gateMode === "in" ? "Signing in…" : "Creating…";
+  gateMsg("");
+  try{
+    const fn = gateMode === "in" ? "signInWithPassword" : "signUp";
+    const { data, error } = await sb.auth[fn]({ email, password });
+    if(error) throw error;
+    // if the project requires email confirmation there's no session yet
+    if(gateMode === "up" && !data.session){
+      setGateMode("in");
+      gateMsg("Check your email for a confirmation link, then sign in.", true);
+    }
+  }catch(err){
+    const m = String(err && err.message || err);
+    gateMsg(/Invalid login/i.test(m)
+      ? "That email and password don't match an account."
+      : /already registered/i.test(m)
+        ? "That email already has an account — sign in instead."
+        : m);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = gateMode === "in" ? "Sign in" : "Create account";
+  }
+});
+
+$("signout-btn").addEventListener("click", async ()=>{
+  if(!sb) return;
+  await pushCloud();                    // don't lose the last edit
+  await sb.auth.signOut();
+  // clear this device so the next person doesn't inherit the data
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  location.reload();
+});
 
 $("export-btn").addEventListener("click", exportData);
 $("import-btn").addEventListener("click", ()=>$("import-file").click());
