@@ -19,6 +19,10 @@ img{max-width:100%}
   --accent:#177357; --accent-soft:#E2EFEA; --accent-ink:#0F5A43;
   --amber:#B4690E; --amber-soft:#F6EAD9;
   --danger:#A63D2F; --danger-soft:#F6E2DE;
+  /* Task colours. Fixed slot order, validated for colour-vision deficiency
+     and contrast against this panel surface — don't reorder or add to them. */
+  --s0:#98A8A1; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
   --shadow:0 1px 2px rgba(23,33,29,.05), 0 4px 16px rgba(23,33,29,.05);
   --display:"Bricolage Grotesque", Georgia, serif;
   --body:"Instrument Sans", system-ui, -apple-system, sans-serif;
@@ -32,6 +36,8 @@ img{max-width:100%}
     --accent:#3FBF95; --accent-soft:#1B322A; --accent-ink:#6ED9B4;
     --amber:#E0A254; --amber-soft:#33271A;
     --danger:#E07A6A; --danger-soft:#3A2320;
+    --s0:#6B7D75; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
     --shadow:0 1px 2px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.2);
   }
 }
@@ -41,7 +47,9 @@ img{max-width:100%}
   --line:#26302B; --line2:#33403A;
   --accent:#3FBF95; --accent-soft:#1B322A; --accent-ink:#6ED9B4;
   --amber:#E0A254; --amber-soft:#33271A;
-  --danger:#E07A6A;
+  --danger:#E07A6A; --danger-soft:#3A2320;
+  --s0:#6B7D75; --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
   --shadow:0 1px 2px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.2);
 }
 *{box-sizing:border-box}
@@ -263,6 +271,17 @@ li.grouplab{
   display:flex; justify-content:space-between; align-items:baseline;
 }
 li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
+.swatch{
+  width:11px; height:11px; border-radius:3px; flex:none;
+  box-shadow:0 0 0 1px rgba(0,0,0,.12) inset;
+}
+.task.done .swatch{opacity:.45}
+.swatch.pick{width:20px; height:20px; border-radius:5px}
+.swatch.pick:hover{transform:scale(1.12)}
+li.pickrow{
+  display:flex; gap:6px; padding:8px 2px 10px 30px;
+  border-bottom:1px solid var(--line);
+}
 .del{color:var(--faint); font-size:15px; line-height:1; padding:4px; flex:none; visibility:hidden}
 .task:hover .del, .habit:hover .del, .del:focus-visible{visibility:visible}
 .del:hover{color:var(--danger)}
@@ -333,17 +352,84 @@ li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .day.on{color:#0B120F} }
 .day.today{border-color:var(--accent)}
 
+/* ---------- escalations ---------- */
+.esc-panel{margin-top:20px}
+.esc-body{
+  display:grid; grid-template-columns:auto 1fr auto;
+  gap:24px; align-items:center;
+}
+.esc-count{display:flex; align-items:baseline; gap:8px; min-width:120px}
+.esc-n{
+  font-family:var(--mono); font-size:44px; font-weight:600; line-height:1;
+  color:var(--danger); font-variant-numeric:tabular-nums;
+}
+.esc-n.zero{color:var(--faint)}
+.esc-lab{
+  font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
+}
+.esc-undo{font-size:11px; color:var(--faint); text-decoration:underline; align-self:center}
+.esc-undo:hover{color:var(--danger)}
+.esc-mid{display:flex; flex-direction:column; align-items:flex-start; gap:10px; min-width:0}
+.esc-add{white-space:nowrap}
+.esc-why .dphint{font-size:12px; color:var(--muted)}
+.esc-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px}
+.esc-chips button{
+  font-size:12px; padding:4px 11px; border-radius:999px;
+  border:1px solid var(--line2); color:var(--ink); background:var(--surface2);
+}
+.esc-chips button:hover{border-color:var(--danger); color:var(--danger)}
+.esc-chips button.skip{color:var(--faint); background:none; border-style:dashed}
+.esc-break{font-size:12px; color:var(--muted); margin:0; line-height:1.6}
+.esc-break b{color:var(--danger); font-weight:600; font-family:var(--mono)}
+.esc-spark{display:flex; flex-direction:column; gap:7px; align-items:flex-end}
+.esc-spark-lab{
+  font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
+}
+.spark{display:flex; align-items:flex-end; gap:4px; height:44px}
+.spark .bar{
+  width:20px; border-radius:4px 4px 2px 2px; background:var(--surface2);
+  display:flex; align-items:flex-start; justify-content:center; position:relative;
+}
+.spark .bar i{
+  position:absolute; bottom:0; left:0; right:0; border-radius:4px 4px 2px 2px;
+  background:var(--danger);
+}
+.spark .bar span{
+  position:absolute; top:-15px; left:0; right:0; text-align:center;
+  font-family:var(--mono); font-size:10px; color:var(--muted);
+}
+.spark .bar.today{outline:1.5px solid var(--danger); outline-offset:1px}
+@media (max-width:860px){
+  .esc-body{grid-template-columns:auto 1fr; gap:18px}
+  .esc-spark{grid-column:1 / -1; align-items:flex-start}
+}
+@media (max-width:560px){
+  .esc-body{grid-template-columns:1fr}
+}
+
 /* ---------- chart ---------- */
 .chart-panel{margin-top:20px}
-.legend{display:flex; gap:16px; font-size:12px; color:var(--muted)}
-.legend span{display:inline-flex; align-items:center; gap:6px}
-.sw{width:10px; height:10px; border-radius:3px; display:inline-block}
-.sw.f{background:var(--amber)} .sw.t{background:var(--accent)}
 .chart-scroll{overflow-x:auto}
 #chart{display:block; width:100%; min-width:520px; height:auto}
-.bar-f{fill:var(--amber)} .dot-t{fill:var(--accent)} .line-t{stroke:var(--accent)}
+.seg{stroke:none}
+.seg:hover{opacity:.82}
 .axis{fill:var(--muted); font-family:var(--mono); font-size:11px}
+.axis.total{fill:var(--ink); font-size:11px}
+.axis.done{fill:var(--faint); font-size:10px}
+.axis-unit{
+  fill:var(--faint); font-family:var(--body); font-size:9px;
+  text-transform:uppercase; letter-spacing:.08em;
+}
 .gridline{stroke:var(--line)}
+.legend{
+  display:flex; flex-wrap:wrap; gap:7px 16px; margin-top:14px;
+  padding-top:12px; border-top:1px solid var(--line);
+  font-size:12px; color:var(--muted);
+}
+.legend .lg{display:inline-flex; align-items:center; gap:6px; max-width:100%}
+.legend .lg b{font-family:var(--mono); color:var(--ink); font-weight:600}
+.legend .sw{width:10px; height:10px; border-radius:3px; flex:none; display:inline-block}
+.lg-empty{color:var(--faint)}
 
 @media (max-width:980px){
   .grid{grid-template-columns:1fr 1fr}
@@ -494,13 +580,54 @@ li.grouplab .n{font-family:var(--mono); color:var(--faint); font-weight:400}
     </section>
   </div>
 
+  <section class="panel esc-panel">
+    <div class="panel-h">
+      <h2>Escalations</h2>
+      <span class="meta" id="esc-week">0 this week</span>
+    </div>
+    <div class="panel-body esc-body">
+      <div class="esc-count">
+        <span class="esc-n" id="esc-n">0</span>
+        <span class="esc-lab">today</span>
+        <button class="esc-undo" id="esc-undo" hidden>Undo</button>
+      </div>
+
+      <div class="esc-mid">
+        <button class="btn primary esc-add" id="esc-add">+ Log an escalation</button>
+        <div class="esc-why" id="esc-why" hidden>
+          <span class="dphint">Why did it escalate?</span>
+          <div class="esc-chips">
+            <button data-reason="billing">Billing</button>
+            <button data-reason="technical">Technical</button>
+            <button data-reason="policy">Policy exception</button>
+            <button data-reason="repeat">Repeat contact</button>
+            <button data-reason="manager">Asked for a manager</button>
+            <button data-reason="wait">Wait time</button>
+            <button data-reason="other">Other</button>
+            <button data-reason="" class="skip">Skip</button>
+          </div>
+        </div>
+        <p class="esc-break" id="esc-break" hidden></p>
+      </div>
+
+      <div class="esc-spark">
+        <span class="esc-spark-lab">Last 7 days</span>
+        <div class="spark" id="esc-spark"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel chart-panel">
     <div class="panel-h">
-      <h2>Last 7 days</h2>
-      <div class="legend"><span><i class="sw f"></i>Focus minutes</span><span><i class="sw t"></i>Tasks completed</span></div>
+      <h2>Where the focus went</h2>
+      <span class="meta" id="chart-total">0 min over 7 days</span>
     </div>
-    <div class="panel-body chart-scroll">
-      <svg id="chart" viewBox="0 0 720 200" role="img" aria-label="Focus minutes and tasks completed over the last 7 days"></svg>
+    <div class="panel-body">
+      <div class="chart-scroll">
+        <svg id="chart" viewBox="0 0 720 220" role="img"
+             aria-label="Focused minutes each day for the last 7 days, split by task"></svg>
+      </div>
+      <div class="legend" id="chart-legend"></div>
     </div>
   </section>
 </div>
@@ -527,7 +654,7 @@ if(/^PASTE_/.test(SUPABASE_URL) || /^PASTE_/.test(SUPABASE_ANON_KEY)){
   document.getElementById("app").hidden = false;
 }
 /* ---------- state ---------- */
-const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{} };   // focus/interrupts keyed by "YYYY-MM-DD"
+const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{}, escalations:{} };   // focus/interrupts/escalations keyed by "YYYY-MM-DD"
 
 const $ = id => document.getElementById(id);
 
@@ -575,10 +702,14 @@ function lsLoad(){
     const raw = localStorage.getItem(LS_KEY);
     if(raw){ const d = JSON.parse(raw);
       state.tasks=d.tasks||{}; state.habits=d.habits||{}; state.focus=d.focus||{};
-      state.routines=d.routines||{}; state.interrupts=d.interrupts||{}; }
+      state.routines=d.routines||{}; state.interrupts=d.interrupts||{};
+      state.escalations=d.escalations||{}; }
   }catch(e){}
+  loaded = true;
 }
+let loaded = false;   // never write before the first read, or we erase the file
 function lsSave(){
+  if(!loaded) return;
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
 }
 
@@ -604,7 +735,7 @@ function hardRemove(coll, id){
 }
 
 /* ---------- cloud sync (optional; off until configured) ---------- */
-const COLLS = ["tasks","habits","focus","routines","interrupts"];
+const COLLS = ["tasks","habits","focus","routines","interrupts","escalations"];
 const cloudConfigured = !/^PASTE_/.test(SUPABASE_URL) && !/^PASTE_/.test(SUPABASE_ANON_KEY);
 let sb = null, me = null, pushTimer = null, lastPushed = "";
 
@@ -795,11 +926,11 @@ $("task-form").addEventListener("submit", e => {
     const days = pickedDays();
     if(!days.length){ $("daypick").hidden = false; return; }
     const id = "r" + Date.now() + Math.random().toString(36).slice(2,6);
-    state.routines[id] = touch({ text:txt, days, createdAt:Date.now(), log:{} });
+    state.routines[id] = touch({ text:txt, days, createdAt:Date.now(), log:{}, color:nextSlot() });
     saveDoc("routines", id);
   } else {
     const id = "t" + Date.now() + Math.random().toString(36).slice(2,6);
-    state.tasks[id] = touch({ text:txt, done:false, createdAt:Date.now(), doneDay:null });
+    state.tasks[id] = touch({ text:txt, done:false, createdAt:Date.now(), doneDay:null, color:nextSlot() });
     saveDoc("tasks", id);
   }
   $("task-input").value = "";
@@ -850,7 +981,7 @@ function routineRow(id, r, checked){
   txt.ondblclick = startEdit;
   const del = document.createElement("button"); del.type="button"; del.className="del"; del.textContent="✕";
   del.setAttribute("aria-label","Remove routine"); del.onclick = () => deleteRoutine(id);
-  li.append(tick, txt, tag, edit, del);
+  li.append(tick, swatchButton("r", id, r.color), txt, tag, edit, del);
   if(editingId === "r:"+id) queueMicrotask(startEdit);
   return li;
 }
@@ -914,6 +1045,77 @@ function ageTag(t){
   };
 }
 
+/* ---------- task colours ----------
+   Slots are assigned in fixed order, never cycled: a new task takes the
+   lowest slot no other open task is using. Past eight, tasks share slot 0
+   (grey, "other") rather than inventing a ninth hue that nobody could
+   tell apart from the rest. */
+const SLOTS = 8;
+function colorVar(slot){ return "var(--s" + (slot >= 1 && slot <= SLOTS ? slot : 0) + ")"; }
+
+function nextSlot(){
+  const used = new Set();
+  for(const t of Object.values(state.tasks))
+    if(!t.deleted && !t.done && typeof t.color === "number") used.add(t.color);
+  for(const r of Object.values(state.routines))
+    if(!r.deleted && typeof r.color === "number") used.add(r.color);
+  for(let i=1;i<=SLOTS;i++) if(!used.has(i)) return i;
+  return 0;
+}
+
+// the colour for a "t:<id>" / "r:<id>" focus key
+function slotForKey(key){
+  const [kind, id] = key.split(":");
+  const rec = kind === "r" ? state.routines[id] : state.tasks[id];
+  return rec && typeof rec.color === "number" ? rec.color : 0;
+}
+
+function setColor(kind, id, slot){
+  const coll = kind === "r" ? "routines" : "tasks";
+  const rec = state[coll][id]; if(!rec) return;
+  state[coll][id] = touch({ ...rec, color: slot });
+  saveDoc(coll, id);
+  pickingColor = null;
+  renderAll();
+}
+
+let pickingColor = null;      // "t:<id>" whose palette row is open
+
+function swatchButton(kind, id, slot){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "swatch";
+  b.style.background = colorVar(slot);
+  b.setAttribute("aria-label", "Change colour");
+  b.title = "Change colour";
+  b.onclick = () => {
+    const key = kind + ":" + id;
+    pickingColor = pickingColor === key ? null : key;
+    renderAll();
+  };
+  return b;
+}
+
+function colorPickerRow(kind, id){
+  const li = document.createElement("li");
+  li.className = "pickrow";
+  for(let s=1;s<=SLOTS;s++){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "swatch pick";
+    b.style.background = colorVar(s);
+    b.setAttribute("aria-label", "Colour " + s);
+    b.onclick = () => setColor(kind, id, s);
+    li.append(b);
+  }
+  const none = document.createElement("button");
+  none.type = "button"; none.className = "swatch pick";
+  none.style.background = colorVar(0);
+  none.setAttribute("aria-label", "No colour");
+  none.title = "No colour";
+  none.onclick = () => setColor(kind, id, 0);
+  li.append(none);
+  return li;
+}
+
 // total focused minutes ever logged against one task/routine key
 function focusMinutesFor(key){
   let n = 0;
@@ -971,7 +1173,7 @@ function taskRow(id, t){
   txt.ondblclick = startEdit;
   const del = document.createElement("button"); del.type="button"; del.className="del"; del.textContent="✕";
   del.setAttribute("aria-label","Delete task"); del.onclick = () => deleteTask(id);
-  li.append(tick, txt);
+  li.append(tick, swatchButton("t", id, t.color), txt);
   if(fm) li.append(fm);
   li.append(side, edit, del);
   if(editingId === "t:"+id) queueMicrotask(startEdit);
@@ -1004,6 +1206,11 @@ function renderTasks(){
     list.append(li);
     rows.forEach(row=>list.append(row));
   };
+  // a row of swatches slides in under whichever task's colour chip was clicked
+  const withPicker = (entries, kind) => entries.flatMap(([id,rec])=>{
+    const row = kind === "r" ? routineRow(id, rec, false) : taskRow(id, rec);
+    return pickingColor === kind+":"+id ? [row, colorPickerRow(kind, id)] : [row];
+  });
   const carried = open.filter(([,t])=>daysOld(t.createdAt)>0);
   const fresh = open.filter(([,t])=>daysOld(t.createdAt)<=0);
   const useGroups = dueOpen.length || (carried.length && fresh.length);
@@ -1015,10 +1222,10 @@ function renderTasks(){
       : "All clear. Nice.";
     list.append(li);
   } else if(useGroups){
-    if(dueOpen.length) group("Routine — due today", dueOpen.map(([id,r])=>routineRow(id,r,false)));
-    if(carried.length) group("Carried over", carried.map(([id,t])=>taskRow(id,t)));
-    if(fresh.length) group(carried.length?"Added today":"Tasks", fresh.map(([id,t])=>taskRow(id,t)));
-  } else open.forEach(([id,t])=>list.append(taskRow(id,t)));
+    if(dueOpen.length) group("Routine — due today", withPicker(dueOpen, "r"));
+    if(carried.length) group("Carried over", withPicker(carried, "t"));
+    if(fresh.length) group(carried.length?"Added today":"Tasks", withPicker(fresh, "t"));
+  } else withPicker(open, "t").forEach(row=>list.append(row));
 
   // manager for every routine, due today or not
   const rhead=$("rout-head"), rbar=$("rout-toggle"), rl=$("rout-list");
@@ -1325,6 +1532,97 @@ $("int-pick").addEventListener("click", e=>{
   }
 });
 
+/* ---------- escalations ---------- */
+const ESC_LABELS = { billing:"billing", technical:"technical", policy:"policy exception",
+  repeat:"repeat contact", manager:"asked for a manager", wait:"wait time", other:"other" };
+let lastEsc = null;          // most recent log this session, for Undo
+
+function escDay(day){ return state.escalations[day] || { count:0, reasons:{} }; }
+
+function logEscalation(){
+  const day = today();
+  const cur = escDay(day);
+  state.escalations[day] = touch({ count:(cur.count||0)+1, reasons:{ ...(cur.reasons||{}) } });
+  lastEsc = { day, reason:null };
+  saveDoc("escalations", day);
+  $("esc-why").hidden = false;
+  renderAll();
+}
+
+function tagEscalation(reason){
+  $("esc-why").hidden = true;
+  if(!reason || !lastEsc) return;
+  const cur = escDay(lastEsc.day);
+  const reasons = { ...(cur.reasons||{}) };
+  reasons[reason] = (reasons[reason]||0) + 1;
+  state.escalations[lastEsc.day] = touch({ count:cur.count||0, reasons });
+  lastEsc.reason = reason;
+  saveDoc("escalations", lastEsc.day);
+  renderAll();
+}
+
+function undoEscalation(){
+  if(!lastEsc) return;
+  const cur = escDay(lastEsc.day);
+  const reasons = { ...(cur.reasons||{}) };
+  if(lastEsc.reason && reasons[lastEsc.reason]){
+    reasons[lastEsc.reason]--;
+    if(!reasons[lastEsc.reason]) delete reasons[lastEsc.reason];
+  }
+  state.escalations[lastEsc.day] = touch({ count:Math.max(0,(cur.count||0)-1), reasons });
+  saveDoc("escalations", lastEsc.day);
+  lastEsc = null;
+  $("esc-why").hidden = true;
+  renderAll();
+}
+
+$("esc-add").addEventListener("click", logEscalation);
+$("esc-undo").addEventListener("click", undoEscalation);
+$("esc-why").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  tagEscalation(b.dataset.reason);
+});
+
+function renderEscalations(){
+  const d = escDay(today());
+  const n = d.count || 0;
+  const nEl = $("esc-n");
+  nEl.textContent = n;
+  nEl.classList.toggle("zero", n === 0);
+  $("esc-undo").hidden = !lastEsc;
+
+  let week = 0;
+  for(let i=0;i<7;i++) week += (escDay(daysBack(i)).count || 0);
+  $("esc-week").textContent = week + (week === 1 ? " this week" : " this week");
+
+  // today's reasons, most common first; untagged is the remainder
+  const parts = Object.entries(d.reasons || {}).sort((a,b)=>b[1]-a[1]);
+  const tagged = parts.reduce((s,[,v])=>s+v, 0);
+  const untagged = Math.max(0, n - tagged);
+  const el = $("esc-break");
+  if(!n){ el.hidden = true; }
+  else{
+    el.hidden = false;
+    const bits = parts.map(([k,v])=>ESC_LABELS[k]+" ×"+v);
+    if(untagged) bits.push(untagged+" untagged");
+    el.innerHTML = "Today: <b>"+n+"</b> — " + bits.join(" · ");
+  }
+
+  // 7-day sparkline
+  const days = []; for(let i=6;i>=0;i--) days.push(daysBack(i));
+  const counts = days.map(day => escDay(day).count || 0);
+  const peak = Math.max(1, ...counts);
+  $("esc-spark").innerHTML = days.map((day,i)=>{
+    const c = counts[i];
+    const h = Math.round((c / peak) * 34);
+    const dow = DOW[new Date(day+"T12:00:00").getDay()][0];
+    return '<div class="bar'+(i===6?" today":"")+'" style="height:38px" title="'+day+': '+c+'">'
+      + (c ? '<span>'+c+'</span>' : '')
+      + '<i style="height:'+Math.max(c?3:0,h)+'px"></i>'
+      + '</div>';
+  }).join("");
+}
+
 function renderInterrupts(){
   const d = state.interrupts[today()];
   const el = $("int-line");
@@ -1356,48 +1654,97 @@ function renderStats(){
   $("focus-week").textContent = week+" min this week";
 }
 
+/* Focused minutes per day, each bar stacked by the task the time went to.
+   One measure, one scale — tasks completed is shown as a plain count row
+   under the axis rather than a second line on a second scale. */
 function renderChart(){
+  const esc = s => String(s).replace(/[<>&"]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
   const days=[]; for(let i=6;i>=0;i--) days.push(daysBack(i));
-  const focus = days.map(d=>(state.focus[d]||{minutes:0}).minutes);
-  const tasks = days.map(d=>
-    Object.values(state.tasks).filter(t=>!t.deleted&&t.done&&t.doneDay===d).length +
-    Object.values(state.routines).filter(r=>!r.deleted&&(r.log||{})[d]).length);
-  const W=720,H=200,L=44,R=36,T=16,B=28;
+
+  // minutes per task key per day, plus a week total per key for the legend
+  const perDay = days.map(d => {
+    const f = state.focus[d] || {};
+    const by = f.byTask || {};
+    const rows = Object.entries(by)
+      .map(([key, v]) => ({ key, min: v.minutes||0, slot: slotForKey(key), label: taskLabelFor(key, v.label) }))
+      .filter(r => r.min > 0);
+    const tracked = rows.reduce((s,r)=>s+r.min, 0);
+    const untracked = Math.max(0, (f.minutes||0) - tracked);
+    if(untracked > 0) rows.push({ key:"__none", min:untracked, slot:0, label:"Not linked to a task" });
+    rows.sort((a,b)=> a.slot - b.slot);
+    return rows;
+  });
+  const totals = perDay.map(rows => rows.reduce((s,r)=>s+r.min, 0));
+  const weekTotal = totals.reduce((a,b)=>a+b, 0);
+
+  const byKey = new Map();
+  perDay.forEach(rows => rows.forEach(r => {
+    const cur = byKey.get(r.key) || { min:0, slot:r.slot, label:r.label };
+    cur.min += r.min; byKey.set(r.key, cur);
+  }));
+
+  const W=720, H=220, L=46, R=14, T=22, B=52;
   const iw=W-L-R, ih=H-T-B;
-  const fmax=Math.max(30, Math.ceil(Math.max(...focus)/30)*30);
-  const tmax=Math.max(4, Math.max(...tasks));
-  const x=i=>L+iw*(i+.5)/7;
-  const yf=v=>T+ih*(1-v/fmax);
-  const yt=v=>T+ih*(1-v/tmax);
-  let s="";
-  for(let g=0;g<=3;g++){
-    const v=fmax*g/3, y=yf(v);
-    s+='<line class="gridline" x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'"/>';
-    s+='<text class="axis" x="'+(L-8)+'" y="'+(y+4)+'" text-anchor="end">'+Math.round(v)+'</text>';
+  const peak = Math.max(30, Math.ceil(Math.max(...totals, 0)/30)*30);
+  const x = i => L + iw*(i+.5)/7;
+  const y = v => T + ih*(1 - v/peak);
+  const bw = Math.min(46, iw/7*.56);
+
+  let s = "";
+  for(let g=0; g<=3; g++){
+    const v = peak*g/3, yy = y(v);
+    s += '<line class="gridline" x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'"/>';
+    s += '<text class="axis" x="'+(L-9)+'" y="'+(yy+4)+'" text-anchor="end">'+Math.round(v)+'</text>';
   }
-  const bw=Math.min(40, iw/7*.5);
-  days.forEach((d,i)=>{
-    if(focus[i]>0){
-      const y=yf(focus[i]);
-      s+='<rect class="bar-f" x="'+(x(i)-bw/2)+'" y="'+y+'" width="'+bw+'" height="'+(T+ih-y)+'" rx="4"/>';
-    }
-    const lbl=DOW[new Date(d+"T12:00:00").getDay()];
-    s+='<text class="axis" x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle">'+lbl+'</text>';
+  s += '<text class="axis-unit" x="'+(L-9)+'" y="'+(T-8)+'" text-anchor="end">min</text>';
+
+  days.forEach((d, i) => {
+    let cursor = 0;                       // minutes stacked so far, from the baseline
+    perDay[i].forEach(r => {
+      const yTop = y(cursor + r.min), yBot = y(cursor);
+      const h = Math.max(2, yBot - yTop - 2);   // 2px gap so segments stay countable
+      s += '<rect class="seg" x="'+(x(i)-bw/2)+'" y="'+yTop+'" width="'+bw+'" height="'+h+'"'
+         + ' rx="3" fill="'+colorVar(r.slot)+'">'
+         + '<title>'+esc(r.label)+' — '+r.min+' min on '+d+'</title></rect>';
+      cursor += r.min;
+    });
+    if(totals[i] > 0)
+      s += '<text class="axis total" x="'+x(i)+'" y="'+(y(totals[i])-7)+'" text-anchor="middle">'+totals[i]+'</text>';
+
+    const dow = DOW[new Date(d+"T12:00:00").getDay()];
+    s += '<text class="axis" x="'+x(i)+'" y="'+(H-26)+'" text-anchor="middle">'+dow+'</text>';
+
+    const done = Object.values(state.tasks).filter(t=>!t.deleted&&t.done&&t.doneDay===d).length +
+                 Object.values(state.routines).filter(r=>!r.deleted&&(r.log||{})[d]).length;
+    s += '<text class="axis done" x="'+x(i)+'" y="'+(H-9)+'" text-anchor="middle">'
+       + (done ? done+'&#9679;' : '·') + '<title>'+done+' finished on '+d+'</title></text>';
   });
-  let path="";
-  days.forEach((d,i)=>{ path+=(i?"L":"M")+x(i)+" "+yt(tasks[i])+" "; });
-  s+='<path class="line-t" d="'+path+'" fill="none" stroke-width="2" stroke-linecap="round"/>';
-  days.forEach((d,i)=>{
-    s+='<circle class="dot-t" cx="'+x(i)+'" cy="'+yt(tasks[i])+'" r="3.5"/>';
-    if(tasks[i]>0) s+='<text class="axis" x="'+x(i)+'" y="'+(yt(tasks[i])-8)+'" text-anchor="middle">'+tasks[i]+'</text>';
-  });
-  s+='<text class="axis" x="'+(W-R+6)+'" y="'+(yt(tmax)+4)+'">'+tmax+'</text>';
-  $("chart").innerHTML=s;
+  s += '<text class="axis-unit" x="'+(L-9)+'" y="'+(H-9)+'" text-anchor="end">done</text>';
+  $("chart").innerHTML = s;
+
+  const hrs = Math.floor(weekTotal/60), mins = weekTotal%60;
+  $("chart-total").textContent = (hrs ? hrs+"h "+mins+"m" : weekTotal+" min") + " over 7 days";
+
+  // legend: biggest share first, names in ink so colour never carries meaning alone
+  const legend = [...byKey.entries()].sort((a,b)=>b[1].min-a[1].min);
+  $("chart-legend").innerHTML = legend.length
+    ? legend.map(([,v]) =>
+        '<span class="lg"><i class="sw" style="background:'+colorVar(v.slot)+'"></i>'
+        + esc(v.label) + ' <b>' + v.min + 'm</b></span>').join("")
+    : '<span class="lg-empty">Link a task to the focus timer and its time shows up here.</span>';
+}
+
+// current wording of a task, falling back to what was stored when it ran
+function taskLabelFor(key, stored){
+  if(key === "__none") return "Not linked to a task";
+  const [kind, id] = key.split(":");
+  const rec = kind === "r" ? state.routines[id] : state.tasks[id];
+  return (rec && !rec.deleted) ? rec.text : (stored || "(removed task)");
 }
 
 function renderAll(){
   renderTasks(); renderHabits(); renderStats(); renderChart();
-  renderInterrupts(); renderFocusTarget(); renderOnTask();
+  renderInterrupts(); renderFocusTarget(); renderOnTask(); renderEscalations();
   lsSave();
 }
 
@@ -1464,7 +1811,8 @@ $("import-file").addEventListener("change", e=>{
   e.target.value = "";
 });
 
-renderAll();
+// boot() loads saved data first, then renders. Nothing may render (and so
+// save) before that, or the empty starting state would overwrite the file.
 boot();
 // re-render shortly after midnight so "today" rolls over
 setInterval(()=>{ const t=$("today-label").dataset.d; if(t!==today()){ $("today-label").dataset.d=today(); renderAll(); } }, 60000);
