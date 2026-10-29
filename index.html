@@ -353,6 +353,78 @@ li.pickrow{
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .day.on{color:#0B120F} }
 .day.today{border-color:var(--accent)}
 
+/* ---------- upcoming projects ---------- */
+.proj-panel{margin-top:20px}
+.proj-form{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.proj-form input, .proj-form select{
+  font:inherit; font-size:14px; padding:8px 11px; border-radius:8px;
+  border:1px solid var(--line2); background:var(--ground); color:var(--ink);
+}
+#proj-name{flex:1 1 240px; min-width:0}
+#proj-date{flex:0 0 150px}
+#proj-prio{flex:0 0 108px}
+#proj-unit{flex:0 0 160px; min-width:0}
+.proj-form button{
+  flex:none; padding:8px 16px; border-radius:8px; font-weight:600;
+  background:var(--accent-soft); color:var(--accent-ink); border:1px solid transparent;
+}
+.proj-filters{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px}
+.proj-filters button{
+  font-size:12px; padding:3px 11px; border-radius:999px;
+  border:1px solid var(--line2); color:var(--muted); background:var(--surface);
+}
+.proj-filters button[aria-pressed="true"]{
+  background:var(--accent-soft); border-color:var(--accent); color:var(--accent-ink); font-weight:600;
+}
+.proj-group{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:600;
+  color:var(--muted); padding:14px 2px 5px; border-bottom:1px solid var(--line);
+}
+.proj-group.late{color:var(--danger)}
+.proj-group .n{font-family:var(--mono); color:var(--faint); font-weight:400}
+.proj{
+  display:flex; align-items:center; gap:10px; padding:9px 2px;
+  border-bottom:1px solid var(--line);
+}
+.proj:last-child{border-bottom:none}
+.proj.done .pname{color:var(--faint); text-decoration:line-through}
+.proj.in-tasks{list-style:none; flex-wrap:wrap; row-gap:7px}
+.rowbreak{flex-basis:100%; height:0; margin:0}
+.proj.in-tasks .pname{flex:1 1 100px}
+.proj.in-tasks .punit{max-width:120px}
+.proj.in-tasks .prio{margin-left:30px}      /* line up under the task text */
+.proj.in-tasks .pwhen{min-width:0; margin-left:auto}
+.prio{
+  flex:none; width:58px; text-align:center; font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.06em; padding:3px 0; border-radius:5px;
+}
+.prio.high{background:var(--danger-soft); color:var(--danger)}
+.prio.med{background:var(--amber-soft); color:var(--amber)}
+.prio.low{background:var(--surface2); color:var(--muted)}
+.pname{flex:1; min-width:0; overflow-wrap:anywhere}
+.punit{
+  flex:none; font-size:11px; padding:2px 9px; border-radius:999px;
+  background:var(--surface2); color:var(--muted); max-width:150px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.pwhen{
+  flex:none; font-family:var(--mono); font-size:11px; color:var(--faint);
+  font-variant-numeric:tabular-nums; text-align:right; min-width:86px;
+}
+.pwhen.soon{color:var(--amber)}
+.pwhen.late{color:var(--danger); font-weight:600}
+.proj .edit, .proj .del{visibility:hidden}
+.proj:hover .edit, .proj:hover .del, .proj .edit:focus-visible, .proj .del:focus-visible{visibility:visible}
+.pname[contenteditable="true"]{
+  background:var(--surface2); border-radius:6px; padding:2px 6px; margin:-2px 0;
+  outline:2px solid var(--accent); text-decoration:none; color:var(--ink);
+}
+@media (max-width:620px){
+  #proj-date, #proj-prio, #proj-unit{flex:1 1 calc(50% - 4px)}
+  .punit{display:none}
+}
+
 /* ---------- escalations ---------- */
 .esc-panel{margin-top:20px}
 .esc-body{
@@ -582,6 +654,30 @@ li.pickrow{
     </section>
   </div>
 
+  <section class="panel proj-panel">
+    <div class="panel-h">
+      <h2>Upcoming</h2>
+      <span class="meta" id="proj-meta"></span>
+    </div>
+    <div class="panel-body">
+      <form class="proj-form" id="proj-form">
+        <input id="proj-name" placeholder="What needs doing…" maxlength="200" autocomplete="off" required>
+        <input id="proj-date" type="date" aria-label="Due date" required>
+        <select id="proj-prio" aria-label="Priority">
+          <option value="high">High</option>
+          <option value="med" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <input id="proj-unit" list="unit-list" placeholder="Business unit" maxlength="40"
+               aria-label="Business unit" autocomplete="off">
+        <datalist id="unit-list"></datalist>
+        <button type="submit">Schedule</button>
+      </form>
+      <div class="proj-filters" id="proj-filters" hidden></div>
+      <div id="proj-list"></div>
+    </div>
+  </section>
+
   <section class="panel esc-panel">
     <div class="panel-h">
       <h2>Escalations</h2>
@@ -656,7 +752,7 @@ if(/^PASTE_/.test(SUPABASE_URL) || /^PASTE_/.test(SUPABASE_ANON_KEY)){
   document.getElementById("app").hidden = false;
 }
 /* ---------- state ---------- */
-const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{}, escalations:{} };   // focus/interrupts/escalations keyed by "YYYY-MM-DD"
+const state = { tasks:{}, habits:{}, focus:{}, routines:{}, interrupts:{}, escalations:{}, projects:{} };   // focus/interrupts/escalations keyed by "YYYY-MM-DD"
 
 const $ = id => document.getElementById(id);
 
@@ -705,7 +801,7 @@ function lsLoad(){
     if(raw){ const d = JSON.parse(raw);
       state.tasks=d.tasks||{}; state.habits=d.habits||{}; state.focus=d.focus||{};
       state.routines=d.routines||{}; state.interrupts=d.interrupts||{};
-      state.escalations=d.escalations||{}; }
+      state.escalations=d.escalations||{}; state.projects=d.projects||{}; }
   }catch(e){}
   loaded = true;
 }
@@ -737,7 +833,7 @@ function hardRemove(coll, id){
 }
 
 /* ---------- cloud sync (optional; off until configured) ---------- */
-const COLLS = ["tasks","habits","focus","routines","interrupts","escalations"];
+const COLLS = ["tasks","habits","focus","routines","interrupts","escalations","projects"];
 const cloudConfigured = !/^PASTE_/.test(SUPABASE_URL) && !/^PASTE_/.test(SUPABASE_ANON_KEY);
 let sb = null, me = null, pushTimer = null, lastPushed = "";
 
@@ -1061,14 +1157,23 @@ function nextSlot(){
     if(!t.deleted && !t.done && typeof t.color === "number") used.add(t.color);
   for(const r of Object.values(state.routines))
     if(!r.deleted && typeof r.color === "number") used.add(r.color);
+  // only scheduled work that has actually come due competes for a colour,
+  // so a long backlog of future items can't exhaust the palette
+  for(const [,p] of projectsDueNow())
+    if(typeof p.color === "number") used.add(p.color);
   for(let i=1;i<=SLOTS;i++) if(!used.has(i)) return i;
   return 0;
 }
 
 // the colour for a "t:<id>" / "r:<id>" focus key
+function recordFor(kind, id){
+  return kind === "r" ? state.routines[id]
+       : kind === "p" ? state.projects[id]
+       : state.tasks[id];
+}
 function slotForKey(key){
   const [kind, id] = key.split(":");
-  const rec = kind === "r" ? state.routines[id] : state.tasks[id];
+  const rec = recordFor(kind, id);
   return rec && typeof rec.color === "number" ? rec.color : 0;
 }
 
@@ -1215,15 +1320,22 @@ function renderTasks(){
   });
   const carried = open.filter(([,t])=>daysOld(t.createdAt)>0);
   const fresh = open.filter(([,t])=>daysOld(t.createdAt)<=0);
-  const useGroups = dueOpen.length || (carried.length && fresh.length);
+  // scheduled work lands here on its due date — overdue first, then by priority
+  const dueProjects = projectsDueNow();
+  const useGroups = dueProjects.length || dueOpen.length || (carried.length && fresh.length);
 
-  if(dueOpen.length===0 && open.length===0){
+  if(dueProjects.length===0 && dueOpen.length===0 && open.length===0){
     const li=document.createElement("li"); li.className="empty";
-    li.textContent = (entries.length===0 && routines.length===0)
+    li.textContent = (entries.length===0 && routines.length===0 && !projectEntriesOpen().length)
       ? "Nothing here yet — add your first task above."
       : "All clear. Nice.";
     list.append(li);
   } else if(useGroups){
+    if(dueProjects.length){
+      const anyLate = dueProjects.some(([,p])=>daysUntil(p.due) < 0);
+      group(anyLate ? "Scheduled — due or overdue" : "Scheduled — due today",
+            dueProjects.map(([id,p])=>projectRow(id, p, true)));
+    }
     if(dueOpen.length) group("Routine — due today", withPicker(dueOpen, "r"));
     if(carried.length) group("Carried over", withPicker(carried, "t"));
     if(fresh.length) group(carried.length?"Added today":"Tasks", withPicker(fresh, "t"));
@@ -1416,7 +1528,8 @@ function renderFocusTarget(){
   const routines = routineEntries()
     .filter(([,r])=>dueToday(r))
     .map(([id,r])=>["r:"+id, "↻ "+r.text]);
-  const opts = [...routines, ...open];
+  const projects = projectsDueNow().map(([id,p])=>["p:"+id, "◆ "+p.name]);
+  const opts = [...projects, ...routines, ...open];
   sel.innerHTML = "";
   const none = document.createElement("option");
   none.value = ""; none.textContent = opts.length ? "Not linked to a task" : "No open tasks to link";
@@ -1561,8 +1674,250 @@ function undoInterrupt(){
   renderAll();
 }
 
+/* ---------- upcoming projects ----------
+   Dated work with a priority and a business unit. Units are whatever you
+   type — the datalist remembers them, so nothing has to be configured. */
+const PRIO = { high:"High", med:"Med", low:"Low" };
+const PRIO_RANK = { high:0, med:1, low:2 };
+let projFilter = "";          // "" = all units
+
+function projEntries(){
+  return Object.entries(state.projects)
+    .filter(([,p])=>!p.deleted)
+    .sort((a,b)=>
+      (a[1].due||"").localeCompare(b[1].due||"") ||
+      (PRIO_RANK[a[1].prio]??1) - (PRIO_RANK[b[1].prio]??1) ||
+      a[1].createdAt - b[1].createdAt);
+}
+
+function projectEntriesOpen(){ return projEntries().filter(([,p])=>!p.done); }
+
+// open scheduled work whose date has arrived (or passed), most overdue first
+function projectsDueNow(){
+  return projectEntriesOpen()
+    .filter(([,p]) => { const n = daysUntil(p.due); return n !== null && n <= 0; })
+    .sort((a,b) =>
+      (daysUntil(a[1].due) - daysUntil(b[1].due)) ||
+      (PRIO_RANK[a[1].prio]??1) - (PRIO_RANK[b[1].prio]??1));
+}
+
+function knownUnits(){
+  const seen = new Map();   // lowercase -> original spelling, so casing stays stable
+  for(const [,p] of projEntries()){
+    const u = (p.unit||"").trim();
+    if(u && !seen.has(u.toLowerCase())) seen.set(u.toLowerCase(), u);
+  }
+  return [...seen.values()].sort((a,b)=>a.localeCompare(b));
+}
+
+// whole days from today to a YYYY-MM-DD date; negative means overdue
+function daysUntil(due){
+  if(!due) return null;
+  const d = new Date(due+"T12:00:00"), now = new Date(today()+"T12:00:00");
+  return Math.round((d - now)/86400000);
+}
+
+function dueLabel(due){
+  const n = daysUntil(due);
+  if(n === null) return { txt:"no date", cls:"" };
+  if(n < -1) return { txt:(-n)+"d overdue", cls:" late" };
+  if(n === -1) return { txt:"yesterday", cls:" late" };
+  if(n === 0) return { txt:"today", cls:" late" };
+  if(n === 1) return { txt:"tomorrow", cls:" soon" };
+  if(n <= 7) return { txt:"in "+n+"d", cls:" soon" };
+  const d = new Date(due+"T12:00:00");
+  return { txt:d.toLocaleDateString(undefined,{month:"short", day:"numeric"}), cls:"" };
+}
+
+$("proj-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("proj-name").value.trim();
+  const due = $("proj-date").value;
+  if(!name || !due) return;
+  const id = "p" + Date.now() + Math.random().toString(36).slice(2,6);
+  state.projects[id] = touch({
+    name, due, prio: $("proj-prio").value,
+    unit: $("proj-unit").value.trim(), done:false, doneDay:null,
+    createdAt:Date.now(), color:nextSlot()
+  });
+  saveDoc("projects", id);
+  $("proj-name").value = "";
+  // keep the date and unit — scheduling several things for one day is common
+  $("proj-name").focus();
+  renderAll();
+});
+
+function toggleProject(id){
+  const prev = state.projects[id]; if(!prev) return;
+  const p = touch({ ...prev, done: !prev.done });
+  p.doneDay = p.done ? today() : null;
+  state.projects[id] = p;
+  saveDoc("projects", id); renderAll();
+}
+function deleteProject(id){
+  if(!confirm("Remove this scheduled item?")) return;
+  tombstone("projects", id); renderAll();
+}
+function setProjField(id, field, value){
+  const prev = state.projects[id]; if(!prev) return;
+  state.projects[id] = touch({ ...prev, [field]: value });
+  saveDoc("projects", id); renderAll();
+}
+
+// asTaskRow renders the same item as an <li> so it can sit in the Tasks list;
+// either copy drives the same record, so checking one checks both.
+function projectRow(id, p, asTaskRow){
+  const row = document.createElement(asTaskRow ? "li" : "div");
+  row.className = "proj" + (p.done ? " done" : "") + (asTaskRow ? " in-tasks" : "");
+
+  const tick = document.createElement("button");
+  tick.type="button"; tick.className="tickbox";
+  tick.setAttribute("aria-label", (p.done?"Mark not done":"Mark done")+" — "+p.name);
+  tick.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 5 9.5 10 3" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  tick.onclick = () => toggleProject(id);
+
+  const prio = document.createElement("button");
+  prio.type="button"; prio.className = "prio " + (p.prio||"med");
+  prio.textContent = PRIO[p.prio] || "Med";
+  prio.title = "Click to change priority";
+  prio.onclick = () => {
+    const order = ["high","med","low"];
+    const next = order[(order.indexOf(p.prio||"med") + 1) % order.length];
+    setProjField(id, "prio", next);
+  };
+
+  const name = document.createElement("span");
+  name.className = "pname"; name.textContent = p.name;
+
+  const edit = document.createElement("button");
+  edit.type="button"; edit.className="edit"; edit.textContent="✎";
+  edit.setAttribute("aria-label","Edit name");
+  // distinct edit keys so the two copies of one item don't both open an editor
+  const editKey = "p:" + id + (asTaskRow ? ":t" : "");
+  const startEdit = () => makeEditable(name, p.name, next => setProjField(id, "name", next), editKey);
+  edit.onclick = startEdit;
+  name.ondblclick = startEdit;
+
+  // shows "in 3d" / "2d overdue"; click it to swap in a picker and reschedule
+  const lbl = dueLabel(p.due);
+  const whenTxt = document.createElement("button");
+  whenTxt.type = "button";
+  whenTxt.className = "pwhen" + (p.done ? "" : lbl.cls);
+  whenTxt.textContent = p.done ? "done" : lbl.txt;
+  whenTxt.title = (p.due || "no date") + " — click to reschedule";
+  whenTxt.onclick = () => {
+    const picker = document.createElement("input");
+    picker.type = "date"; picker.value = p.due || "";
+    picker.className = whenTxt.className;
+    picker.setAttribute("aria-label", "Due date for " + p.name);
+    whenTxt.replaceWith(picker);
+    picker.focus();
+    if(picker.showPicker) { try{ picker.showPicker(); }catch(e){} }
+    picker.onchange = () => { if(picker.value) setProjField(id, "due", picker.value); };
+    picker.onblur = () => { if(picker.isConnected && picker.value === (p.due||"")) renderAll(); };
+  };
+
+  const del = document.createElement("button");
+  del.type="button"; del.className="del"; del.textContent="✕";
+  del.setAttribute("aria-label","Remove"); del.onclick = () => deleteProject(id);
+
+  let unit = null;
+  if((p.unit||"").trim()){
+    unit = document.createElement("span");
+    unit.className = "punit"; unit.textContent = p.unit; unit.title = "Business unit: " + p.unit;
+  }
+
+  if(asTaskRow){
+    // the Tasks column is narrow, so the name gets its own line and the
+    // priority / unit / date chips sit underneath it
+    const brk = document.createElement("span");
+    brk.className = "rowbreak";
+    row.append(tick, name, edit, del, brk, prio);
+    if(unit) row.append(unit);
+    row.append(whenTxt);
+  } else {
+    row.append(tick, prio, name);
+    if(unit) row.append(unit);
+    row.append(whenTxt, edit, del);
+  }
+  if(editingId === editKey) queueMicrotask(startEdit);
+  return row;
+}
+
+function renderProjects(){
+  const list = $("proj-list");
+  const units = knownUnits();
+  $("unit-list").innerHTML = units.map(u =>
+    '<option value="'+u.replace(/"/g,"&quot;")+'"></option>').join("");
+
+  // unit filter only earns its space once there is more than one unit
+  const fbar = $("proj-filters");
+  if(units.length > 1){
+    fbar.hidden = false;
+    fbar.innerHTML = "";
+    [["", "All"], ...units.map(u=>[u,u])].forEach(([val, label]) => {
+      const b = document.createElement("button");
+      b.type="button"; b.textContent = label;
+      b.setAttribute("aria-pressed", String(projFilter === val));
+      b.onclick = () => { projFilter = val; renderAll(); };
+      fbar.append(b);
+    });
+  } else { fbar.hidden = true; projFilter = ""; }
+
+  let entries = projEntries();
+  if(projFilter) entries = entries.filter(([,p]) => (p.unit||"") === projFilter);
+
+  const open = entries.filter(([,p])=>!p.done);
+  const done = entries.filter(([,p])=>p.done);
+
+  const buckets = [
+    { key:"late",  label:"Overdue",      cls:" late", items: open.filter(([,p])=>daysUntil(p.due) < 0) },
+    { key:"today", label:"Today",        cls:"",      items: open.filter(([,p])=>daysUntil(p.due) === 0) },
+    { key:"week",  label:"Next 7 days",  cls:"",      items: open.filter(([,p])=>{const n=daysUntil(p.due); return n>0 && n<=7;}) },
+    { key:"later", label:"Later",        cls:"",      items: open.filter(([,p])=>daysUntil(p.due) > 7) }
+  ];
+
+  list.innerHTML = "";
+  if(!open.length && !done.length){
+    const d = document.createElement("div"); d.className = "empty";
+    d.textContent = projFilter
+      ? "Nothing scheduled for " + projFilter + "."
+      : "Schedule work for a future date — pick a day, a priority and the unit it belongs to.";
+    list.append(d);
+  } else {
+    buckets.forEach(b => {
+      if(!b.items.length) return;
+      const h = document.createElement("div");
+      h.className = "proj-group" + b.cls;
+      h.innerHTML = b.label + ' <span class="n">' + b.items.length + '</span>';
+      list.append(h);
+      b.items.forEach(([id,p]) => list.append(projectRow(id,p)));
+    });
+    if(done.length){
+      const h = document.createElement("div");
+      h.className = "proj-group";
+      h.innerHTML = 'Completed <span class="n">' + done.length + '</span>';
+      list.append(h);
+      done.slice(-10).forEach(([id,p]) => list.append(projectRow(id,p)));
+    }
+  }
+
+  const late = open.filter(([,p])=>daysUntil(p.due) < 0).length;
+  const dueToday = open.filter(([,p])=>daysUntil(p.due) === 0).length;
+  const bits = [];
+  if(late) bits.push(late + " overdue");
+  if(dueToday) bits.push(dueToday + " due today");
+  bits.push(open.length + " scheduled");
+  $("proj-meta").textContent = bits.join(" · ");
+
+  // drop completed items that are more than 60 days old
+  const cutoff = daysBack(60);
+  for(const [id,p] of Object.entries(state.projects))
+    if(!p.deleted && p.done && p.doneDay && p.doneDay < cutoff) hardRemove("projects", id);
+}
+
 /* ---------- escalations ---------- */
-const ESC_LABELS = { billing:"billing", technical:"technical", policy:"policy exception",
+const ESC_LABELS ={ billing:"billing", technical:"technical", policy:"policy exception",
   repeat:"repeat contact", manager:"asked for a manager", wait:"wait time", other:"other" };
 let lastEsc = null;          // most recent log this session, for Undo
 
@@ -1678,8 +2033,12 @@ function renderStats(){
   const rs = Object.values(state.routines).filter(r=>!r.deleted);
   const rDue = rs.filter(r=>dueToday(r)).length;
   const rDone = rs.filter(r=>dueToday(r) && (r.log||{})[today()]).length;
-  const doneToday = all.filter(t=>t.done && t.doneDay===today()).length + rDone;
-  const openNow = all.filter(t=>!t.done).length + (rDue - rDone);
+  // scheduled work counts here too once its date arrives, since that is when
+  // it shows up in the task list
+  const ps = Object.values(state.projects).filter(p=>!p.deleted);
+  const pDone = ps.filter(p=>p.done && p.doneDay===today()).length;
+  const doneToday = all.filter(t=>t.done && t.doneDay===today()).length + rDone + pDone;
+  const openNow = all.filter(t=>!t.done).length + (rDue - rDone) + projectsDueNow().length;
   $("s-tasks").innerHTML = doneToday + "<small> / " + (doneToday+openNow) + "</small>";
   const habits = Object.values(state.habits).filter(h=>!h.deleted);
   const hToday = habits.filter(h=>(h.log||{})[today()]).length;
@@ -1750,7 +2109,8 @@ function renderChart(){
     s += '<text class="axis" x="'+x(i)+'" y="'+(H-44)+'" text-anchor="middle">'+dow+'</text>';
 
     const done = Object.values(state.tasks).filter(t=>!t.deleted&&t.done&&t.doneDay===d).length +
-                 Object.values(state.routines).filter(r=>!r.deleted&&(r.log||{})[d]).length;
+                 Object.values(state.routines).filter(r=>!r.deleted&&(r.log||{})[d]).length +
+                 Object.values(state.projects).filter(p=>!p.deleted&&p.done&&p.doneDay===d).length;
     s += '<text class="axis done" x="'+x(i)+'" y="'+(H-27)+'" text-anchor="middle">'
        + (done ? done+'&#9679;' : '·') + '<title>'+done+' finished on '+d+'</title></text>';
 
@@ -1784,13 +2144,15 @@ function renderChart(){
 function taskLabelFor(key, stored){
   if(key === "__none") return "Not linked to a task";
   const [kind, id] = key.split(":");
-  const rec = kind === "r" ? state.routines[id] : state.tasks[id];
-  return (rec && !rec.deleted) ? rec.text : (stored || "(removed task)");
+  const rec = recordFor(kind, id);
+  if(!rec || rec.deleted) return stored || "(removed task)";
+  return rec.text || rec.name;        // projects carry `name`, tasks carry `text`
 }
 
 function renderAll(){
   renderTasks(); renderHabits(); renderStats(); renderChart();
   renderInterrupts(); renderFocusTarget(); renderOnTask(); renderEscalations();
+  renderProjects();
   lsSave();
 }
 
@@ -1863,6 +2225,7 @@ boot();
 // re-render shortly after midnight so "today" rolls over
 setInterval(()=>{ const t=$("today-label").dataset.d; if(t!==today()){ $("today-label").dataset.d=today(); renderAll(); } }, 60000);
 $("today-label").dataset.d = today();
+if(!$("proj-date").value) $("proj-date").value = today();   // sensible starting point
 </script>
 </body>
 </html>
